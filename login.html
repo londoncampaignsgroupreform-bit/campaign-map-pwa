@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        max-width: 400px;
+        margin: auto;
+        background-color: #f9f9f9;
+      }
+      h2 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      label {
+        font-weight: bold;
+        display: block;
+        margin-bottom: 5px;
+      }
+      input, select {
+        margin-bottom: 10px;
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+      button {
+        padding: 10px 20px;
+        width: 100%;
+        background-color: #0078d4;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #005fa3;
+      }
+      #error {
+        color: red;
+        margin-top: 10px;
+        text-align: center;
+      }
+      #loading {
+        display: none;
+        margin-top: 10px;
+        color: #555;
+        text-align: center;
+      }
+      .remember {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .remember input {
+        margin-right: 6px;
+      }
+      @media (max-width: 500px) {
+        body {
+          padding: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Login</h2>
+    <form id="loginForm">
+      <label for="username">Username:</label>
+      <input type="text" id="username" name="username" required autocomplete="username">
+
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password">
+
+      <div class="remember">
+        <input type="checkbox" id="rememberMe">
+        <label for="rememberMe">Remember me</label>
+      </div>
+
+      <button type="submit">Login</button>
+    </form>
+
+    <div id="loading">Verifying party loyalty...</div>
+    <div id="error"></div>
+
+    <script>
+      const fallbackRedirect = window.location.href;
+
+      document.getElementById('loginForm').onsubmit = function(e) {
+        e.preventDefault();
+        document.getElementById('error').textContent = '';
+        document.getElementById('loading').style.display = 'block';
+
+        const user = document.getElementById('username').value.trim();
+        const pass = document.getElementById('password').value.trim();
+        const remember = document.getElementById('rememberMe').checked;
+
+        google.script.run.withSuccessHandler(function(result) {
+          document.getElementById('loading').style.display = 'none';
+
+          if (result.success) {
+            sessionStorage.setItem('loginTime', Date.now());
+            if (remember) {
+              localStorage.setItem('rememberedUser', user);
+            } else {
+              localStorage.removeItem('rememberedUser');
+            }
+            setTimeout(() => {
+              window.location.href = result.redirect || fallbackRedirect;
+            }, 300);
+          } else {
+            document.getElementById('error').textContent = result.message || 'Login failed.';
+          }
+        }).verifyLogin(user, pass);
+      };
+
+      // Autofill remembered user
+      window.onload = function() {
+        const remembered = localStorage.getItem('rememberedUser');
+        if (remembered) {
+          document.getElementById('username').value = remembered;
+          document.getElementById('rememberMe').checked = true;
+        }
+      };
+    </script>
+  </body>
+</html>
