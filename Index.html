@@ -3,6 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <title>Campaign Map</title>
+    <script>
+  if (sessionStorage.getItem("loggedIn") !== "true") {
+    window.location.href = "login.html";
+  }
+
+  window.onload = () => {
+    initMap(); // or whatever your map init function is
+  };
+</script>
     <link rel="manifest" href="https://londoncampaignsgroupreform-bit.github.io/manifest.json">
 <meta name="theme-color" content="#00b3b3">
     <style>
@@ -455,3 +464,4 @@ function escapeHTML(str) {
   </body>
 
 </html>
+
