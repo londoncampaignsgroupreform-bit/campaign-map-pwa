@@ -3,13 +3,30 @@
   <head>
     <meta charset="utf-8" />
     <title>Campaign Map</title>
-    <script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const user = params.get("user");
+  const role = params.get("role");
+  const sheetNames = (params.get("sheets") || "").split(",");
+
+  if (user) {
+    sessionStorage.setItem("user", user);
+    sessionStorage.setItem("loggedIn", "true"); // ✅ This is essential
+  }
+  if (role) sessionStorage.setItem("role", role);
+  if (sheetNames.length) sessionStorage.setItem("sheetNames", JSON.stringify(sheetNames));
+
   if (sessionStorage.getItem("loggedIn") !== "true") {
     window.location.href = "login.html";
   }
 
   window.onload = () => {
     initMap(); // or whatever your map init function is
+
+    // ✅ Update UI with session values
+    document.getElementById("userDisplay").textContent = sessionStorage.getItem("user") || "Unknown";
+    document.getElementById("roleDisplay").textContent = sessionStorage.getItem("role") || "Unknown";
+    document.getElementById("accessDisplay").textContent = JSON.parse(sessionStorage.getItem("sheetNames") || "[]").join(", ");
   };
 </script>
     <link rel="manifest" href="https://londoncampaignsgroupreform-bit.github.io/manifest.json">
@@ -178,9 +195,9 @@
   <body>
     <button id="logoutBtn" onclick="logout()">Logout</button>
     <div id="userInfo">
-      Logged in as <strong><?= user ?></strong><br>
-      Role: <strong><?= role ?></strong><br>
-      Access: <?= sheetNames.join(', ') ?>
+      Logged in as <strong id="userDisplay"></strong><br>
+      Role: <strong id="roleDisplay"></strong><br>
+      Access: <span id="accessDisplay"></span>
     </div>
     <!-- Locate Me Button -->
 <button id="locateMeBtn">📍 Locate Me</button>
