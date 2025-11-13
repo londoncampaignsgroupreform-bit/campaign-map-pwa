@@ -85,10 +85,10 @@
   <script>
     // Register service worker
     if (location.origin === "https://londoncampaignsgroupreform-bit.github.io") {
-      navigator.serviceWorker.register("service-worker.js")
-        .then(() => console.log("✅ Service Worker registered"))
-        .catch(err => console.error("❌ Service Worker failed", err));
-    }
+  navigator.serviceWorker.register("service-worker.js")
+    .then(() => console.log("✅ Service Worker registered"))
+    .catch(err => console.error("❌ Service Worker failed", err));
+}
 
     // Handle login
     document.getElementById("loginForm").onsubmit = (e) => {
@@ -123,3 +123,4 @@
 
 </body>
 </html>
+
