@@ -21,13 +21,24 @@
   }
 
   window.onload = () => {
-    initMap(); // or whatever your map init function is
+  initMap(); // or whatever your map init function is
 
-    // ✅ Update UI with session values
-    document.getElementById("userDisplay").textContent = sessionStorage.getItem("user") || "Unknown";
-    document.getElementById("roleDisplay").textContent = sessionStorage.getItem("role") || "Unknown";
-    document.getElementById("accessDisplay").textContent = JSON.parse(sessionStorage.getItem("sheetNames") || "[]").join(", ");
-  };
+  // ✅ Update UI with session values
+  document.getElementById("userDisplay").textContent = sessionStorage.getItem("user") || "Unknown";
+  document.getElementById("roleDisplay").textContent = sessionStorage.getItem("role") || "Unknown";
+  document.getElementById("accessDisplay").textContent = JSON.parse(sessionStorage.getItem("sheetNames") || "[]").join(", ");
+
+  // ✅ Populate ward selector dynamically
+  const sheetList = JSON.parse(sessionStorage.getItem("sheetNames") || "[]");
+  const filter = document.getElementById("sheetFilter");
+
+  sheetList.forEach(name => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    filter.appendChild(option);
+  });
+};
 </script>
     <link rel="manifest" href="https://londoncampaignsgroupreform-bit.github.io/manifest.json">
 <meta name="theme-color" content="#00b3b3">
@@ -223,7 +234,7 @@
   <select id="sheetFilter">
   <option value="" selected disabled>Select a ward…</option>
   <option value="All">All Wards</option>
-  <?!= sheetNames.map(name => `<option value="${name}">${name}</option>`).join('') ?>
+  <!-- Ward options will be added dynamically -->
 </select>
 </div>
     <div id="saveModal">
@@ -492,5 +503,6 @@ function escapeHTML(str) {
   </body>
 
 </html>
+
 
 
