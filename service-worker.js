@@ -11,7 +11,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(FILES_TO_CACHE).catch((err) => {
-        console.error("❌ Failed to cache files during install", err);
+        console.error("❌ Cache install failed", err);
       });
     })
   );
