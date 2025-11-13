@@ -52,26 +52,74 @@
     button:hover {
       background-color: #005fa3;
     }
+
+    #loadingSpinner {
+      display: none;
+      margin-top: 10px;
+      font-weight: bold;
+      color: #0078d4;
+      text-align: center;
+    }
+
+    #errorMessage {
+      color: red;
+      margin-top: 10px;
+      text-align: center;
+      display: none;
+    }
   </style>
 </head>
 <body>
 
   <h2>Login</h2>
 
-<form action="https://script.google.com/macros/s/AKfycby44MhPl0LFSvPOtCpgRzHWNN3nIyAs0n_dFO7qdsPH7XqFBy2XiR4oGdRRfhQ1TX8T/exec" method="POST">
-  <input type="text" name="username" required>
-  <input type="password" name="password" required>
-  <button type="submit">Login</button>
-</form>
-<script>
+  <form id="loginForm">
+    <input type="text" name="username" placeholder="Username" required>
+    <input type="password" name="password" placeholder="Password" required>
+    <button type="submit">Login</button>
+  </form>
+
+  <div id="loadingSpinner">🔄 Logging in…</div>
+  <div id="errorMessage">❌ Login failed. Please check your credentials.</div>
+
+  <script>
+    // Register service worker
     if (location.origin === "https://londoncampaignsgroupreform-bit.github.io") {
       navigator.serviceWorker.register("service-worker.js")
         .then(() => console.log("✅ Service Worker registered"))
         .catch(err => console.error("❌ Service Worker failed", err));
     }
+
+    // Handle login
+    document.getElementById("loginForm").onsubmit = (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      document.getElementById("loadingSpinner").style.display = "block";
+      document.getElementById("errorMessage").style.display = "none";
+
+      fetch("https://script.google.com/macros/s/AKfycby44MhPl0LFSvPOtCpgRzHWNN3nIyAs0n_dFO7qdsPH7XqFBy2XiR4oGdRRfhQ1TX8T/exec", {
+        method: "POST",
+        body: formData
+      })
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("loadingSpinner").style.display = "none";
+        if (html.includes("success")) {
+          const username = formData.get("username");
+          sessionStorage.setItem("user", username);
+          sessionStorage.setItem("role", "admin"); // or dynamic if returned
+          window.location.href = "index.html";
+        } else {
+          document.getElementById("errorMessage").style.display = "block";
+        }
+      })
+      .catch(err => {
+        console.error("❌ Login error", err);
+        document.getElementById("loadingSpinner").style.display = "none";
+        document.getElementById("errorMessage").style.display = "block";
+      });
+    };
   </script>
 
 </body>
 </html>
-
-
