@@ -20,9 +20,6 @@
     window.location.href = "login.html";
   }
 
-  window.onload = () => {
-  initMap(); // or whatever your map init function is
-
   // ✅ Update UI with session values
   document.getElementById("userDisplay").textContent = sessionStorage.getItem("user") || "Unknown";
   document.getElementById("roleDisplay").textContent = sessionStorage.getItem("role") || "Unknown";
@@ -498,6 +495,7 @@ function showModal() {
 <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB0hVyEg_1Rbi7IoqflyOslsv81KE3VSsY&callback=initMap&libraries=places"></script>
 </body>
 </html>
+
 
 
 
