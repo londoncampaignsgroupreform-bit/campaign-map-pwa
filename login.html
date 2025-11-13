@@ -83,14 +83,14 @@
   <div id="errorMessage">❌ Login failed. Please check your credentials.</div>
 
   <script>
-    // Register service worker
+    // ✅ Register service worker only on GitHub Pages
     if (location.origin === "https://londoncampaignsgroupreform-bit.github.io") {
-  navigator.serviceWorker.register("service-worker.js")
-    .then(() => console.log("✅ Service Worker registered"))
-    .catch(err => console.error("❌ Service Worker failed", err));
-}
+      navigator.serviceWorker.register("service-worker.js")
+        .then(() => console.log("✅ Service Worker registered"))
+        .catch(err => console.error("❌ Service Worker failed", err));
+    }
 
-    // Handle login
+    // ✅ Handle login
     document.getElementById("loginForm").onsubmit = (e) => {
       e.preventDefault();
       const formData = new FormData(e.target);
@@ -123,4 +123,3 @@
 
 </body>
 </html>
-
