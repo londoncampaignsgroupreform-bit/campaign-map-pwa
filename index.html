@@ -1,323 +1,316 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Campaign Map</title>
-    <link rel="manifest" href="https://londoncampaignsgroupreform-bit.github.io/manifest.json">
-    <meta name="theme-color" content="#00b3b3">
-    <link rel="icon" type="image/jpeg" href="ReformUKlondon.jpg">
-    <style>
-      /* [Your existing CSS remains unchanged] */
-      /* ... */
-    </style>
-  </head>
-  <body>
-    <button id="logoutBtn" onclick="logout()">Logout</button>
-    <div id="userInfo">
-      Logged in as <strong id="userDisplay"></strong><br>
-      Role: <strong id="roleDisplay"></strong><br>
-      Access: <span id="accessDisplay"></span>
-    </div>
-    <button id="locateMeBtn">📍 Locate Me</button>
-    <div id="map"></div>
-    <div id="legend">
-      <strong>Legend</strong><br>
-      <span style="color:#e4003b">● Labour</span><br>
-      <span style="color:#0087dc">● Tory</span><br>
-      <span style="color:#faa61a">● Lib Dem</span><br>
-      <span style="color:#6ab023">● Green</span><br>
-      <span style="color:#00b3b3">● Reform</span><br>
-      <span style="color:#cccccc">● Undecided</span><br>
-      <span style="color:#999999">● Considering</span><br>
-      <span style="color:#000000">● Against</span><br>
-      <span style="color:#9966cc">● Knocked</span>
-    </div>
-    <div id="wardSelector">
-      <label for="sheetFilter"><strong>Filter by Ward</strong></label><br>
-      <select id="sheetFilter">
-        <option value="" selected disabled>Select a ward…</option>
-        <option value="All">All Wards</option>
-      </select>
-    </div>
-    <div id="saveModal">
-      <div class="modal-content">
-        <img src="https://upload.wikimedia.org/wikipedia/en/0/06/Logo_of_the_Reform_UK.svg" alt="Reform UK Logo">
-        <h3>Intelligence Logged</h3>
-      </div>
-    </div>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Campaign Map</title>
+  <meta name="theme-color" content="#00b3b3">
 
-    <script>
-      const params = new URLSearchParams(window.location.search);
-      const user = params.get("user");
-      const role = params.get("role");
-      const sheetNames = (params.get("sheets") || "").split(",");
+  <!-- Manifest (use relative path when serving from same origin) -->
+  <link rel="manifest" href="/manifest.json">
 
-      if (user) sessionStorage.setItem("user", user);
-      if (role) sessionStorage.setItem("role", role);
-      if (sheetNames.length) sessionStorage.setItem("sheetNames", JSON.stringify(sheetNames));
-      sessionStorage.setItem("loggedIn", "true");
+  <style>
+    html,body,#map { height:100%; margin:0; padding:0; }
+    #map { height: 100vh; width:100%; }
+    #wardSelector { position:absolute; top:120px; left:10px; z-index:9999; background:rgba(255,255,255,0.9); padding:6px 10px; border-radius:6px; font-size:13px; font-family:Arial, sans-serif; }
+    #legend { position:absolute; bottom:20px; left:10px; z-index:9999; background:rgba(255,255,255,0.95); padding:10px 14px; border-radius:8px; font-size:13px; font-family:Arial, sans-serif; box-shadow:0 2px 6px rgba(0,0,0,0.2); line-height:1.6; }
+    #sheetFilter, #logoutBtn { position:absolute; top:60px; z-index:9999; padding:6px 12px; border-radius:6px; border:none; font-weight:600; font-size:14px; }
+    #sheetFilter { left:20px; }
+    #logoutBtn { right:80px; background-color:#d9534f; color:white; cursor:pointer; }
+    #logoutBtn:hover { background-color:#c9302c; }
+    #userInfo { position:absolute; top:60px; left:10px; z-index:9999; background:rgba(255,255,255,0.9); padding:6px 10px; border-radius:6px; font-size:13px; font-family:Arial, sans-serif; }
+    .popup-card { font-family:"Segoe UI", Roboto, Arial, sans-serif; font-size:14px; line-height:1.5; max-width:260px; padding:4px; }
+    .popup-card strong { display:block; font-size:15px; margin-bottom:8px; color:#333; }
+    .popup-card label { display:block; margin:6px 0 4px; font-weight:600; font-size:13px; color:#444; }
+    .popup-card select, .popup-card textarea { width:100%; font-size:13px; border:1px solid #ccc; border-radius:6px; padding:6px; box-sizing:border-box; }
+    .popup-card select { height:34px; }
+    .popup-card textarea { resize:vertical; min-height:60px; max-height:120px; }
+    .popup-card button { display:inline-block; margin-top:10px; background:#007bff; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:13px; }
+    .popup-card button:hover { background:#0056b3; }
+    #saveModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; }
+    #saveModal .modal-content { background:white; border-radius:12px; padding:20px; text-align:center; max-width:320px; box-shadow:0 6px 20px rgba(0,0,0,0.25); animation:fadeInUp 0.3s ease-out; }
+    @keyframes fadeInUp { from { opacity:0; transform:translateY(20px);} to { opacity:1; transform:translateY(0);} }
+  </style>
+</head>
 
-      if (sessionStorage.getItem("loggedIn") !== "true") {
-        window.location.href = "login.html";
-      }
+<body>
+  <button id="logoutBtn">Logout</button>
 
-      function escapeHTML(str) {
-        if (typeof str !== "string") str = String(str || "");
-        return str.replace(/[&<>'"]/g, c => ({
-          "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
-        }[c]));
-      }
+  <div id="userInfo">
+    Logged in as <strong id="userDisplay">Unknown</strong><br>
+    Role: <strong id="roleDisplay">Unknown</strong><br>
+    Access: <span id="accessDisplay"></span>
+  </div>
 
-      function logout() {
-        fetch("https://script.google.com/macros/s/AKfycby44MhPl0LFSvPOtCpgRzHWNN3nIyAs0n_dFO7qdsPH7XqFBy2XiR4oGdRRfhQ1TX8T/exec?action=logout")
-          .then(() => {
-            sessionStorage.clear();
-            window.location.href = "login.html";
-          })
-          .catch(err => console.error("❌ Logout failed", err));
-      }
+  <button id="locateMeBtn">📍 Locate Me</button>
 
-      function showModal() {
-        const modal = document.getElementById("saveModal");
-        modal.style.display = "flex";
-        setTimeout(() => { modal.style.display = "none"; }, 1000);
-      }
+  <div id="map"></div>
 
-      window.onload = () => {
-        document.getElementById("userDisplay").textContent = sessionStorage.getItem("user") || "Unknown";
-        document.getElementById("roleDisplay").textContent = sessionStorage.getItem("role") || "Unknown";
-        document.getElementById("accessDisplay").textContent = JSON.parse(sessionStorage.getItem("sheetNames") || "[]").join(", ");
+  <div id="legend">
+    <strong>Legend</strong><br>
+    <span style="color:#e4003b">● Labour</span><br>
+    <span style="color:#0087dc">● Tory</span><br>
+    <span style="color:#faa61a">● Lib Dem</span><br>
+    <span style="color:#6ab023">● Green</span><br>
+    <span style="color:#00b3b3">● Reform</span><br>
+    <span style="color:#cccccc">● Undecided</span><br>
+    <span style="color:#999999">● Considering</span><br>
+    <span style="color:#000000">● Against</span><br>
+    <span style="color:#9966cc">● Knocked</span>
+  </div>
 
-        const sheetList = JSON.parse(sessionStorage.getItem("sheetNames") || "[]");
-        const filter = document.getElementById("sheetFilter");
-        sheetList.forEach(name => {
-          const option = document.createElement("option");
-          option.value = name;
-          option.textContent = name;
-          filter.appendChild(option);
+  <div id="wardSelector">
+    <label for="sheetFilter"><strong>Filter by Ward</strong></label><br>
+    <select id="sheetFilter">
+      <option value="" selected disabled>Select a ward…</option>
+      <option value="All">All Wards</option>
+      <!-- server-side templating may fill these -->
+      <?!= sheetNames.map(name => `<option value="${name}">${name}</option>`).join('') ?>
+    </select>
+  </div>
+
+  <div id="saveModal"><div class="modal-content"><img src="https://upload.wikimedia.org/wikipedia/en/0/06/Logo_of_the_Reform_UK.svg" alt="Reform UK Logo" style="width:80px"><h3>Intelligence Logged</h3></div></div>
+
+  <script>
+  // — Utilities
+  function escapeHTML(str) {
+    if (typeof str !== "string") str = String(str || "");
+    return str.replace(/[&<>'"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" })[c]);
+  }
+
+  // — Session/auth guard: if your environment uses Apps Script templating with sessionStorage,
+  // this will redirect to login if not present. Otherwise it will not attempt to redirect.
+  try {
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem("loggedIn") !== "true") {
+      // If the page is served by Apps Script you probably want this redirect.
+      // When hosted on GitHub Pages, comment out the redirect or provide a hosted login flow.
+      window.location.href = "login.html";
+    }
+  } catch (e) {
+    console.warn('sessionStorage not available', e);
+  }
+
+  // — Map, data and UI state
+  let map;
+  const wardCenters = {
+    "Bedfont": { lat: 51.4485, lng: -0.4325 },
+    "Feltham North": { lat: 51.4560, lng: -0.4080 },
+    "Feltham West": { lat: 51.4470, lng: -0.4170 },
+    "Hanworth Park": { lat: 51.4375, lng: -0.3860 },
+    "Hanworth Village": { lat: 51.4290, lng: -0.3790 }
+  };
+  const defaultCenter = { lat: 51.4405, lng: -0.4085 };
+  const intentionColors = {
+    "Labour": "#e4003b", "Tory": "#0087dc", "Lib Dem": "#faa61a",
+    "Green": "#6ab023", "Reform": "#00b3b3", "Undecided": "#cccccc",
+    "Considering": "#999999", "Against": "#000000", "Knocked": "#9966cc"
+  };
+
+  // — Map initialization (keeps the previous API templating token if present)
+  function initMap() {
+    // mapId may be injected server-side; if not present, leave default map style
+    const mapOptions = {
+      center: defaultCenter,
+      zoom: 14.5
+    };
+    try {
+      // If template provides a mapId variable, use it
+      if (typeof mapId !== 'undefined' && mapId) mapOptions.mapId = mapId;
+    } catch (e) { /* ignore */ }
+
+    map = new google.maps.Map(document.getElementById("map"), mapOptions);
+
+    // Update UI values (safe fallbacks)
+    document.getElementById("userDisplay").textContent = sessionStorage.getItem("user") || "Unknown";
+    document.getElementById("roleDisplay").textContent = sessionStorage.getItem("role") || "Unknown";
+    document.getElementById("accessDisplay").textContent = (JSON.parse(sessionStorage.getItem("sheetNames") || "[]") || []).join(", ");
+
+    // Fetch data using Apps Script if available, otherwise warn and skip
+    if (window.google && google.script && google.script.run) {
+      google.script.run.withSuccessHandler(renderMarkers).getPublicMapData();
+    } else {
+      console.warn('google.script.run not available in this hosting environment — map markers will not load from Apps Script');
+      // Optionally fetch JSON from a public endpoint here
+    }
+  }
+
+  // — Render markers (keeps original grouping / offset logic)
+  function renderMarkers(data) {
+    const selectedSheet = document.getElementById("sheetFilter").value || "All";
+    if (!Array.isArray(data)) { console.warn('map data not array', data); return; }
+    const grouped = {};
+    const bounds = new google.maps.LatLngBounds();
+
+    data.forEach((row) => {
+      let [lat, lng, address, status, notes, sheetName] = row;
+      const latNum = parseFloat(lat), lngNum = parseFloat(lng);
+      if (isNaN(latNum) || isNaN(lngNum)) return;
+
+      address = String(address || "");
+      status = String(status || "");
+      notes = String(notes || "");
+      sheetName = String(sheetName || "");
+
+      if (selectedSheet !== "All" && sheetName !== selectedSheet) return;
+
+      const key = `${latNum.toFixed(4)},${lngNum.toFixed(4)}`;
+      grouped[key] = grouped[key] || [];
+      grouped[key].push({ lat: latNum, lng: lngNum, address, status, notes, sheetName });
+    });
+
+    if (Object.keys(grouped).length === 0) {
+      // don't block UI with alerts in production — use console warning
+      console.warn("No markers found. Check sheet data or filter selection.");
+    }
+
+    Object.values(grouped).forEach((group) => {
+      const count = group.length;
+      const angleStep = (2 * Math.PI) / Math.max(count, 1);
+      const radius = 0.0001;
+
+      group.forEach((item, i) => {
+        const angle = i * angleStep;
+        const offsetLat = item.lat + radius * Math.cos(angle);
+        const offsetLng = item.lng + radius * Math.sin(angle);
+        const color = intentionColors[item.status] || "#cccccc";
+
+        const marker = new google.maps.Marker({
+          map,
+          position: { lat: offsetLat, lng: offsetLng },
+          title: `${item.status}: ${item.address}`,
+          icon: { path: google.maps.SymbolPath.CIRCLE, fillColor: color, fillOpacity:1, strokeColor:"white", strokeWeight:1, scale:6 }
         });
-      };
+        bounds.extend(marker.getPosition());
 
-      document.getElementById("sheetFilter").addEventListener("change", () => {
-        initMap();
-      });
+        const markerId = `marker-${item.lat}-${item.lng}-${i}`;
+        const popup = document.createElement("div");
+        popup.className = "popup-card";
+        popup.innerHTML = `
+          <strong>${escapeHTML(item.address)}</strong>
+          <label for="status-${markerId}">Voter Intention</label>
+          <select id="status-${markerId}">
+            <option value="" disabled ${!item.status ? "selected" : ""}>Select status...</option>
+            ${["Reform","Tory","Labour","Green","Lib Dem","Undecided","Considering","Against","Knocked"].map(opt =>
+              `<option value="${opt}" ${opt === item.status ? "selected" : ""}>${opt}</option>`
+            ).join("")}
+          </select>
+          <label for="notes-${markerId}">Notes</label>
+          <textarea id="notes-${markerId}" rows="3">${escapeHTML(item.notes)}</textarea>
+          <label>Ward: ${escapeHTML(item.sheetName)}</label>
+          <button id="saveBtn-${markerId}">Save</button>
+        `;
 
-      document.getElementById("locateMeBtn").addEventListener("click", () => {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition((position) => {
-            const userLocation = {
-              lat: position.coords.latitude,
-              lng: position.coords.longitude
-            };
+        const infoWindow = new google.maps.InfoWindow({ content: popup });
 
-            new google.maps.Marker({
-              position: userLocation,
-              map: map,
-              title: "You are here",
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                fillColor: "#4285F4",
-                fillOpacity: 1,
-                strokeColor: "white",
-                strokeWeight: 2,
-                scale: 8
-              }
-            });
+        marker.addListener("click", () => {
+          infoWindow.open(map, marker);
+          google.maps.event.addListenerOnce(infoWindow, "domready", () => {
+            const saveBtn = document.getElementById(`saveBtn-${markerId}`);
+            const statusField = document.getElementById(`status-${markerId}`);
+            const notesField = document.getElementById(`notes-${markerId}`);
 
-            new google.maps.Circle({
-              strokeColor: "#4285F4",
-              strokeOpacity: 0.8,
-              strokeWeight: 1,
-              fillColor: "#4285F4",
-              fillOpacity: 0.2,
-              map: map,
-              center: userLocation,
-              radius: position.coords.accuracy || 50
-            });
+            saveBtn.onclick = () => {
+              const newStatus = statusField.value;
+              const newNotes = notesField.value;
+              const latLong = `${item.lat},${item.lng}`;
+              const sheetName = item.sheetName;
 
-            map.setCenter(userLocation);
-          }, () => {
-            alert("Location access denied or unavailable.");
-          });
-        } else {
-          alert("Geolocation is not supported by your browser.");
-        }
-      });
-
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/service-worker.js")
-          .then(() => console.log("✅ Service Worker registered"))
-          .catch(err => console.error("❌ Service Worker failed", err));
-      }
-
-      let map;
-      const wardCenters = {
-        "Bedfont": { lat: 51.4485, lng: -0.4325 },
-        "Feltham North": { lat: 51.4560, lng: -0.4080 },
-        "Feltham West": { lat: 51.4470, lng: -0.4170 },
-        "Hanworth Park": { lat: 51.4375, lng: -0.3860 },
-        "Hanworth Village": { lat: 51.4290, lng: -0.3790 }
-      };
-      const defaultCenter = { lat: 51.4405, lng: -0.4085 };
-
-      function initMap() {
-        map = new google.maps.Map(document.getElementById("map"), {
-          center: defaultCenter,
-          zoom: 14.5
-        });
-
-        fetch("https://script.google.com/macros/s/AKfycby44MhPl0LFSvPOtCpgRzHWNN3nIyAs0n_dFO7qdsPH7XqFBy2XiR4oGdRRfhQ1TX8T/exec?path=map-data")
-          .then(res => res.json())
-          .then(renderMarkers)
-          .catch(err => console.error("❌ Failed to load map data", err));
-      }
-
-      function renderMarkers(data) {
-        const selectedSheet = document.getElementById("sheetFilter").value;
-        if (!selectedSheet) return;
-
-        const grouped = {};
-        const bounds = new google.maps.LatLngBounds();
-
-        data.forEach((row) => {
-          let [lat, lng, address, status, notes, sheetName] = row;
-          const latNum = parseFloat(lat);
-          const lngNum = parseFloat(lng);
-          if (isNaN(latNum) || isNaN(lngNum)) return;
-
-          address = String(address || "");
-          status = String(status || "");
-          notes = String(notes || "");
-          sheetName = String(sheetName || "");
-
-          if (selectedSheet !== "All" && sheetName !== selectedSheet) return;
-
-          const key = `${latNum.toFixed(4)},${lngNum.toFixed(4)}`;
-          if (!grouped[key]) grouped[key] = [];
-          grouped[key].push({ lat: latNum, lng: lngNum, address, status, notes,
-
-          sheetName });
-        });
-
-        Object.values(grouped).forEach((group) => {
-          const count = group.length;
-          const angleStep = (2 * Math.PI) / count;
-          const radius = 0.0001;
-
-          group.forEach((item, i) => {
-            const angle = i * angleStep;
-            const offsetLat = item.lat + radius * Math.cos(angle);
-            const offsetLng = item.lng + radius * Math.sin(angle);
-
-            const intentionColors = {
-              "Labour": "#e4003b",
-              "Tory": "#0087dc",
-              "Lib Dem": "#faa61a",
-              "Green": "#6ab023",
-              "Reform": "#00b3b3",
-              "Undecided": "#cccccc",
-              "Considering": "#999999",
-              "Against": "#000000",
-              "Knocked": "#9966cc"
-            };
-            const color = intentionColors[item.status] || "#cccccc";
-
-            const marker = new google.maps.Marker({
-              map,
-              position: { lat: offsetLat, lng: offsetLng },
-              title: `${item.status}: ${item.address}`,
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                fillColor: color,
-                fillOpacity: 1,
-                strokeColor: "white",
-                strokeWeight: 1,
-                scale: 6
-              }
-            });
-            bounds.extend(marker.getPosition());
-
-            const markerId = `marker-${item.lat}-${item.lng}-${i}`;
-            const popup = document.createElement("div");
-            popup.className = "popup-card";
-            popup.innerHTML = `
-              <strong>${escapeHTML(item.address)}</strong>
-              <label for="status-${markerId}">Voter Intention</label>
-              <select id="status-${markerId}">
-                <option value="" disabled ${!item.status ? "selected" : ""}>Select status...</option>
-                ${["Reform","Tory","Labour","Green","Lib Dem","Undecided","Considering","Against","Knocked"].map(opt =>
-                  `<option value="${opt}" ${opt === item.status ? "selected" : ""}>${opt}</option>`
-                ).join("")}
-              </select>
-              <label for="notes-${markerId}">Notes</label>
-              <textarea id="notes-${markerId}" rows="3">${escapeHTML(item.notes)}</textarea>
-              <label>Ward: ${escapeHTML(item.sheetName)}</label>
-              <button id="saveBtn-${markerId}">Save</button>
-            `;
-
-            const infoWindow = new google.maps.InfoWindow({ content: popup });
-
-            marker.addListener("click", () => {
-              infoWindow.open(map, marker);
-              google.maps.event.addListenerOnce(infoWindow, "domready", () => {
-                const saveBtn = document.getElementById(`saveBtn-${markerId}`);
-                const statusField = document.getElementById(`status-${markerId}`);
-                const notesField = document.getElementById(`notes-${markerId}`);
-
-                saveBtn.onclick = () => {
-                  const newStatus = statusField.value;
-                  const newNotes = notesField.value;
-                  const latLong = `${item.lat},${item.lng}`;
-                  const sheetName = item.sheetName;
-
-                  fetch("https://script.google.com/macros/s/AKfycby44MhPl0LFSvPOtCpgRzHWNN3nIyAs0n_dFO7qdsPH7XqFBy2XiR4oGdRRfhQ1TX8T/exec", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({
-                      action: "updateStatus",
-                      latLong,
-                      newStatus,
-                      newNotes,
-                      user: sessionStorage.getItem("user"),
-                      sheetName
-                    })
-                  })
-                  .then(() => {
+              if (window.google && google.script && google.script.run) {
+                google.script.run
+                  .withSuccessHandler(() => {
                     const updatedColor = intentionColors[newStatus] || "#cccccc";
-                    marker.setIcon({
-                      path: google.maps.SymbolPath.CIRCLE,
-                      fillColor: updatedColor,
-                      fillOpacity: 1,
-                      strokeColor: "white",
-                      strokeWeight: 1,
-                      scale: 6
-                    });
+                    marker.setIcon({ path: google.maps.SymbolPath.CIRCLE, fillColor: updatedColor, fillOpacity:1, strokeColor:"white", strokeWeight:1, scale:6 });
                     infoWindow.close();
                     showModal();
                   })
-                  .catch(err => console.error("❌ Failed to update status", err));
-                };
-              });
-            });
+                  .updateStatus(latLong, newStatus, newNotes, (sessionStorage.getItem('user') || 'Unknown'), sheetName);
+              } else {
+                console.warn('Attempt to save, but google.script.run is not available in this environment.');
+              }
+            };
           });
         });
+      });
+    });
 
-        const center = wardCenters[selectedSheet] || defaultCenter;
-        map.setCenter(center);
-        map.setZoom(14.5);
-      }
-    </script>
+    // center map based on currently selected sheet
+    const sel = document.getElementById("sheetFilter").value;
+    const center = wardCenters[sel] || defaultCenter;
+    map.setCenter(center);
+    map.setZoom(14.5);
+  }
 
-    <!-- Google Maps API (loads initMap automatically) -->
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB0hVyEg_1Rbi7IoqflyOslsv81KE3VSsY&callback=initMap&libraries=places"></script>
-  </body>
+  // — UI helpers
+  function showModal() {
+    const modal = document.getElementById("saveModal");
+    modal.style.display = "flex";
+    setTimeout(() => { modal.style.display = "none"; }, 1000);
+  }
+
+  function logout() {
+    if (window.google && google.script && google.script.run) {
+      google.script.run.withSuccessHandler(() => {
+        sessionStorage.clear();
+        window.location.reload();
+      }).logout();
+    } else {
+      sessionStorage.clear();
+      window.location.href = '/login.html'; // fallback
+    }
+  }
+
+  // — locate me button
+  document.getElementById("locateMeBtn").addEventListener("click", () => {
+    if (!map) return alert('Map not initialized yet.');
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+        new google.maps.Marker({ position: userLocation, map, title:'You are here', icon:{ path: google.maps.SymbolPath.CIRCLE, fillColor:'#4285F4', fillOpacity:1, strokeColor:'white', strokeWeight:2, scale:8 }});
+        new google.maps.Circle({ strokeColor:'#4285F4', strokeOpacity:0.8, strokeWeight:1, fillColor:'#4285F4', fillOpacity:0.2, map, center:userLocation, radius:position.coords.accuracy || 50 });
+        map.setCenter(userLocation);
+      }, () => alert('Location access denied or unavailable.'));
+    } else alert('Geolocation is not supported by your browser.');
+  });
+
+  // — sheet filter change (avoid reassigning window.onload)
+  document.getElementById("sheetFilter").addEventListener("change", () => { if (map) renderMarkers([]) || initMap(); });
+
+  // — service worker registration (relative path recommended)
+  if ('serviceWorker' in navigator) {
+    // register relative to origin — ensure service-worker.js is served from same origin
+    navigator.serviceWorker.register('/service-worker.js').then(() => console.log('✅ Service Worker registered')).catch((err) => console.warn('Service Worker registration failed', err));
+  }
+
+  // — Google Maps dynamic loader
+  (function loadGoogleMapsAndStart() {
+    // Replace the placeholder below with your Maps API key if you host this page publicly.
+    // If you deploy from Apps Script you may instead include the Maps script server-side.
+    const API_KEY = 'YOUR_API_KEY_HERE'; // <-- REPLACE this with your API key
+
+    function insertScriptWithCallback(callbackName) {
+      const s = document.createElement('script');
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=${callbackName}`;
+      s.async = true; s.defer = true;
+      s.onerror = () => console.error('Maps API failed to load');
+      document.head.appendChild(s);
+    }
+
+    // Expose a callback for the API
+    window.__initMapCallback = function() {
+      try { initMap(); } catch (e) { console.error('initMap failed', e); }
+      delete window.__initMapCallback;
+    };
+
+    // If google.maps already present, call initMap immediately
+    if (window.google && window.google.maps) {
+      initMap();
+    } else {
+      // Insert the API script which will call window.__initMapCallback
+      insertScriptWithCallback('__initMapCallback');
+    }
+  })();
+  </script>
+</body>
 </html>
-
-
-
-
-
-
-
 
 
