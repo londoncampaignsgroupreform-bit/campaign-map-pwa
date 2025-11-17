@@ -5,84 +5,47 @@
   <title>Campaign Map Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- ✅ PWA and Branding -->
+  <!-- PWA and Branding -->
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="Reform_U.K._Logo.jpg" type="image/jpeg">
   <meta name="theme-color" content="#00b3b3">
 
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f9f9f9;
-      padding: 20px;
-      max-width: 400px;
-      margin: auto;
-    }
-    h2 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .logo {
-      display: block;
-      margin: 0 auto 20px auto;
-      max-width: 150px;
-      border-radius: 8px;
-    }
-    form {
-      background-color: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    label {
-      font-weight: bold;
-      display: block;
-      margin-bottom: 5px;
-    }
-    input {
-      margin-bottom: 15px;
-      width: 100%;
-      padding: 10px;
-      box-sizing: border-box;
-    }
-    button {
-      padding: 10px;
-      width: 100%;
-      background-color: #0078d4;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #005fa3;
-    }
+    body { font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px; max-width: 400px; margin: auto; }
+    h2 { text-align: center; margin-bottom: 20px; }
+    .logo { display:block; margin:0 auto 20px; max-width:150px; border-radius:8px; }
+    form { background:#fff; padding:20px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
+    label { font-weight:700; display:block; margin-bottom:5px; }
+    input { margin-bottom:15px; width:100%; padding:10px; box-sizing:border-box; }
+    button { padding:10px; width:100%; background:#0078d4; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer; }
+    button:hover { background:#005fa3; }
+    #errorMessage { color:#c00; text-align:center; display:none; margin-top:10px; }
+    #loadingSpinner { text-align:center; display:none; margin-top:10px; }
   </style>
 </head>
 <body>
 
-  <!-- ✅ Visual Logo -->
   <img src="ReformUKlondon.jpg" alt="Reform UK Logo" class="logo">
 
   <h2>Login</h2>
 
   <form id="loginForm" aria-label="Login form">
     <label for="username">Username</label>
-    <input type="text" name="username" id="username" required placeholder="Username" aria-label="Username">
+    <input type="text" name="username" id="username" required placeholder="Username" aria-label="Username" autocomplete="username">
     <label for="password">Password</label>
-    <input type="password" name="password" id="password" required placeholder="Password" aria-label="Password">
+    <input type="password" name="password" id="password" required placeholder="Password" aria-label="Password" autocomplete="current-password">
     <button type="submit">Login</button>
   </form>
 
-  <div id="errorMessage" style="color:red; text-align:center; display:none; margin-top:10px;"></div>
-  <div id="loadingSpinner" style="text-align:center; display:none; margin-top:10px;">🔄 Logging in…</div>
+  <div id="errorMessage"></div>
+  <div id="loadingSpinner">🔄 Logging in…</div>
 
   <script>
+    // Register service worker only when hosted on your GitHub Pages origin
     if (location.origin === "https://londoncampaignsgroupreform-bit.github.io") {
-      navigator.serviceWorker.register("service-worker.js")
-        .then(() => console.log("✅ Service Worker registered"))
-        .catch(err => console.error("❌ Service Worker failed", err));
+      navigator.serviceWorker?.register("service-worker.js")
+        .then(() => console.log("Service worker registered"))
+        .catch(err => console.error("Service worker failed", err));
     }
   </script>
 
@@ -90,23 +53,26 @@
     document.getElementById("loginForm").onsubmit = async function(e) {
       e.preventDefault();
       const form = e.target;
-      const formData = new FormData();
 
+      // build FormData from the form, trim values first
       const username = form.username.value.trim();
       const password = form.password.value.trim();
 
-      formData.append("username", username);
-      formData.append("password", password);
-      formData.append("action", "login");
-      formData.append("origin", location.origin);
+      const formData = new FormData(form); // creates from inputs automatically
+      formData.set("username", username);
+      formData.set("password", password);
+      formData.set("action", "login");
+      formData.set("origin", location.origin);
 
       document.getElementById("loadingSpinner").style.display = "block";
       document.getElementById("errorMessage").style.display = "none";
 
       try {
+        // replace with your actual deployment id if different
         const response = await fetch("https://script.google.com/macros/s/AKfycby44MhPl0LFSvPOtCpgRzHWNN3nIyAs0n_dFO7qdsPH7XqFBy2XiR4oGdRRfhQ1TX8T/exec", {
           method: "POST",
-          body: formData
+          body: formData,
+          credentials: "omit"
         });
 
         const result = await response.json();
@@ -124,7 +90,7 @@
           document.getElementById("errorMessage").style.display = "block";
         }
       } catch (err) {
-        console.error("❌ Login error", err);
+        console.error("Login error", err);
         document.getElementById("loadingSpinner").style.display = "none";
         document.getElementById("errorMessage").textContent = "Login failed. Please try again.";
         document.getElementById("errorMessage").style.display = "block";
