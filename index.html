@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Campaign Map</title>
   <meta name="theme-color" content="#00b3b3">
+  <script>
+  // ✅ Redirect to login.html if not logged in
+  if (sessionStorage.getItem("loggedIn") !== "true") {
+    window.location.href = "login.html";
+  }
+  </script>
 
   <!-- Manifest (use relative path when serving from same origin) -->
   <link rel="manifest" href="/manifest.json">
@@ -312,5 +318,6 @@
   </script>
 </body>
 </html>
+
 
 
