@@ -86,44 +86,52 @@
   <div id="errorMessage">❌ Login failed. Please check your credentials.</div>
 
   <script>
-    // ✅ Register service worker only on GitHub Pages
-    if (location.origin === "https://londoncampaignsgroupreform-bit.github.io") {
-      navigator.serviceWorker.register("service-worker.js")
-        .then(() => console.log("✅ Service Worker registered"))
-        .catch(err => console.error("❌ Service Worker failed", err));
-    }
+  // ✅ Register service worker only on GitHub Pages
+  if (location.origin === "https://londoncampaignsgroupreform-bit.github.io") {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("✅ Service Worker registered"))
+      .catch(err => console.error("❌ Service Worker failed", err));
+  }
 
-    // ✅ Handle login
-    document.getElementById("loginForm").onsubmit = (e) => {
-      e.preventDefault();
-      const formData = new FormData(e.target);
-      document.getElementById("loadingSpinner").style.display = "block";
-      document.getElementById("errorMessage").style.display = "none";
+  // ✅ Handle login
+  document.getElementById("loginForm").onsubmit = async (e) => {
+    e.preventDefault();
+    document.getElementById("loadingSpinner").style.display = "block";
+    document.getElementById("errorMessage").style.display = "none";
 
-      fetch("https://script.google.com/macros/s/AKfycby44MhPl0LFSvPOtCpgRzHWNN3nIyAs0n_dFO7qdsPH7XqFBy2XiR4oGdRRfhQ1TX8T/exec", {
+    const formData = new FormData(e.target);
+    formData.append("action", "login"); // ✅ Tell Apps Script this is a login request
+
+    try {
+      const response = await fetch("https://script.google.com/macros/s/AKfycby44MhPl0LFSvPOtCpgRzHWNN3nIyAs0n_dFO7qdsPH7XqFBy2XiR4oGdRRfhQ1TX8T/exec", {
         method: "POST",
         body: formData
-      })
-      .then(res => res.text())
-      .then(html => {
-        document.getElementById("loadingSpinner").style.display = "none";
-        if (html.includes("success")) {
-          const username = formData.get("username");
-          sessionStorage.setItem("user", username);
-          sessionStorage.setItem("role", "admin"); // or dynamic if returned
-          window.location.href = "index.html";
-        } else {
-          document.getElementById("errorMessage").style.display = "block";
-        }
-      })
-      .catch(err => {
-        console.error("❌ Login error", err);
-        document.getElementById("loadingSpinner").style.display = "none";
-        document.getElementById("errorMessage").style.display = "block";
       });
-    };
-  </script>
+
+      const result = await response.json();
+      document.getElementById("loadingSpinner").style.display = "none";
+
+      if (result.success) {
+        const username = formData.get("username");
+        sessionStorage.setItem("user", username);
+        sessionStorage.setItem("role", result.role || "admin");
+        sessionStorage.setItem("loginTime", Date.now().toString());
+
+        window.location.href = result.redirect || "index.html";
+      } else {
+        document.getElementById("errorMessage").textContent = result.message || "Login failed.";
+        document.getElementById("errorMessage").style.display = "block";
+      }
+    } catch (err) {
+      console.error("❌ Login error", err);
+      document.getElementById("loadingSpinner").style.display = "none";
+      document.getElementById("errorMessage").textContent = "Login failed. Please try again.";
+      document.getElementById("errorMessage").style.display = "block";
+    }
+  };
+</script>
 
 </body>
 </html>
+
 
