@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Campaign Map</title>
+
+  <!-- PWA manifest + theme color -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00b3b3">
+
+  <!-- Basic styling -->
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 20%; }
+    a { display: inline-block; padding: 1em; background: #00b3b3; color: white; text-decoration: none; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Campaign Map</h1>
+  <p>This app runs securely on our backend.</p>
+  <a href="YOUR_APPS_SCRIPT_WEB_APP_URL">Enter App</a>
+
+  <!-- Service worker registration -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js")
+        .then(() => console.log("Service Worker registered"))
+        .catch(err => console.warn("Service Worker registration failed", err));
+    }
+  </script>
+</body>
+</html>
