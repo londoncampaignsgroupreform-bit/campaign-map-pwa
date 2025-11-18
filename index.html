@@ -3,28 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <title>Campaign Map</title>
-
-  <!-- PWA manifest + theme color -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#00b3b3">
-
-  <!-- Basic styling -->
   <style>
-    body { font-family: sans-serif; text-align: center; margin-top: 20%; }
-    a { display: inline-block; padding: 1em; background: #00b3b3; color: white; text-decoration: none; border-radius: 5px; }
+    body { margin: 0; font-family: sans-serif; }
+    #map { height: 100vh; width: 100%; }
   </style>
 </head>
 <body>
-  <h1>Campaign Map</h1>
-  <p>This app runs securely on our backend.</p>
-  <a href="YOUR_APPS_SCRIPT_WEB_APP_URL">Enter App</a>
+  <div id="map"></div>
 
-  <!-- Service worker registration -->
+  <!-- Load Google Maps API -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=<?= MAPS_API_KEY ?>&callback=initMap&libraries=places" async defer></script>
+
   <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js")
-        .then(() => console.log("Service Worker registered"))
-        .catch(err => console.warn("Service Worker registration failed", err));
+    // These values are injected by Apps Script at runtime
+    const SCRIPT_EXEC_URL = "<?= SCRIPT_EXEC_URL ?>";
+    const role = "<?= role ?>";
+
+    let map;
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 51.48, lng: -0.34 }, // Example center
+        zoom: 13
+      });
+
+      // Securely fetch rows from backend
+      fetch(`${SCRIPT_EXEC_URL}?path=map-data&role=${encodeURIComponent(role)}`)
+        .then(resp => resp.json())
+        .then(rows => renderMarkers(rows))
+        .catch(err => console.error("Failed to load map data", err));
+    }
+
+    function renderMarkers(rows) {
+      if (!rows || !rows.length) {
+        console.warn("No markers found.");
+        return;
+      }
+
+      rows.forEach(r => {
+        const [lat, lng, address, status, notes, sheetName] = r;
+        new google.maps.Marker({
+          position: { lat, lng },
+          map,
+          title: `${address} (${status})`
+        });
+      });
     }
   </script>
 </body>
