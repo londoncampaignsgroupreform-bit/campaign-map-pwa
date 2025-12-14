@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login — My App (PWA)</title>
+
+  <!-- PWA manifest specifically in /pwa/ -->
+  <link rel="manifest" href="/pwa/manifest.json" />
+
+  <meta name="theme-color" content="#1976d2" />
+  <style>
+    /* Minimal styling */
+    body { font-family: system-ui, -apple-system, Arial; margin: 2rem; }
+    .container { max-width: 480px; margin: auto; }
+    button { padding: 0.6rem 1rem; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>Sign in</h1>
+    <p>Click the button below to sign in. After sign-in you will be redirected back to the app.</p>
+
+    <!-- Example login button — replace with your real login action -->
+    <button id="signin">Sign in (example)</button>
+
+    <p style="margin-top:1rem;color:#666;">
+      If offline, this page will use the PWA service worker located at /pwa/service-worker.js
+      and scoped to /pwa/ so it won't interfere with pages outside the /pwa/ folder.
+    </p>
+  </main>
+
+  <script>
+    // 1) Service worker registration scoped to /pwa/
+    // This isolates the worker to the /pwa/ path and prevents it from controlling pages outside /pwa/.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/pwa/service-worker.js', { scope: '/pwa/' })
+          .then(function (registration) {
+            console.log('PWA service worker registered with scope:', registration.scope);
+          })
+          .catch(function (err) {
+            console.warn('PWA service worker registration failed:', err);
+          });
+      });
+    }
+
+    // 2) Example sign-in flow (replace with your real auth redirect).
+    // NOTE: Update your Apps Script redirect to send users to /pwa/login.html after auth.
+    document.getElementById('signin').addEventListener('click', function () {
+      // Example redirect to start OAuth or Apps Script flow.
+      // Replace this URL with your actual auth endpoint or Apps Script URL.
+      // e.g. window.location.href = "https://script.google.com/macros/s/XXXXX/exec";
+      window.location.href = "/pwa/login.html?example=redirect";
+    });
+  </script>
+</body>
+</html>
