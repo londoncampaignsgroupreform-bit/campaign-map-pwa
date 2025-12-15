@@ -1,16 +1,19 @@
 // PWA service worker for files inside /pwa/
-// Keep the registration scope '/pwa/' so this worker only affects requests under /pwa/.
+// IMPORTANT: Use RELATIVE paths because this is a GitHub Pages *project site*.
+// The service worker lives in /campaign-map-pwa/pwa/, so "./" resolves correctly.
 
 const CACHE_NAME = 'pwa-cache-v1';
+
+// ✅ Use relative paths — these resolve to:
+// https://londoncampaignsgroupreform-bit.github.io/campaign-map-pwa/pwa/<file>
 const ASSETS_TO_CACHE = [
-  '/pwa/login.html',
-  '/pwa/manifest.json',
-  '/pwa/offline.html'
-  // add other static assets here if you have them, e.g. '/pwa/style.css', '/pwa/login.js'
+  './login.html',
+  './manifest.json',
+  './offline.html'
+  // Add more assets here if needed, e.g. './style.css', './login.js'
 ];
 
 self.addEventListener('install', event => {
-  // Precache critical assets
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(ASSETS_TO_CACHE))
@@ -19,7 +22,6 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  // Remove old caches
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
@@ -31,39 +33,36 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Basic network-first for navigation (pages), fallback to offline page.
-// For other requests, try cache first then network, and cache successful responses.
+// Network-first for navigation requests (pages)
+// Cache-first for static assets
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
-  // Handle navigation requests (pages)
+  // ✅ Navigation requests (HTML pages)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() =>
-        caches.match('/pwa/offline.html')
-      )
+      fetch(event.request).catch(() => caches.match('./offline.html'))
     );
     return;
   }
 
-  // For other GET requests (assets), try cache-first then network
+  // ✅ Asset requests (CSS, JS, images, etc.)
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
       if (cachedResponse) return cachedResponse;
 
       return fetch(event.request).then(networkResponse => {
-        // Optionally cache the response for future requests
         return caches.open(CACHE_NAME).then(cache => {
-          // Only cache successful responses
           if (networkResponse && networkResponse.status === 200) {
             cache.put(event.request, networkResponse.clone());
           }
           return networkResponse;
         });
       }).catch(() => {
-        // If request fails (e.g. offline), fallback to offline page for navigations already handled above.
-        // For other assets, just fail silently or optionally return a placeholder.
-        return caches.match('/pwa/offline.html');
+        // If offline and asset missing, fallback to offline page only for HTML
+        if (event.request.headers.get('accept')?.includes('text/html')) {
+          return caches.match('./offline.html');
+        }
       });
     })
   );
