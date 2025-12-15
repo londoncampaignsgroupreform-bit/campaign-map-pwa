@@ -4,7 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Offline — Campaign Map</title>
-<link rel="manifest" href="/pwa/manifest.json">
+
+<!-- ✅ FIXED: use relative path -->
+<link rel="manifest" href="./manifest.json">
+
 <style>
   body{font-family:system-ui,-apple-system,Arial;margin:2rem;color:#333;text-align:center}
   .card{max-width:560px;margin:auto;padding:1.5rem;border-radius:8px;background:#f7f9fc}
@@ -16,7 +19,9 @@
 <div class="card">
   <h1>You're offline</h1>
   <p>It looks like you're not connected to the internet. Some features may be unavailable.</p>
-  <p><a href="/pwa/login.html">Return to login</a></p>
+
+  <!-- ✅ FIXED: use relative path -->
+  <p><a href="./login.html">Return to login</a></p>
 </div>
 </body>
 </html>
