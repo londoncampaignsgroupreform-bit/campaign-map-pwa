@@ -1,26 +1,73 @@
-<script>
-const API = "https://script.google.com/macros/s/AKfycbwmT_Xf9yP-5_VtUZ04c7eeQgjDgl-X4T51EJeCe0EM48dafZ16_WhE2ShGD5rEZ2wN/exec";
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Campaign Map Login</title>
 
-document.getElementById("signin").addEventListener("click", async () => {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      max-width: 400px;
+      margin: auto;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      font-size: 16px;
+    }
+    button {
+      background: #0078d4;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #005fa3;
+    }
+  </style>
+</head>
 
-  const response = await fetch(API, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      action: "login",
-      username,
-      password
-    })
-  });
+<body>
 
-  const result = await response.json();
+  <h2>Campaign Map Login</h2>
 
-  if (result.success) {
-    window.location.href = `index.html?token=${encodeURIComponent(result.token)}`;
-  } else {
-    alert(result.message);
-  }
-});
-</script>
+  <input id="username" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
+  <button id="signin">Sign In</button>
+
+  <script>
+    const API = "https://script.google.com/macros/s/AKfycbwmT_Xf9yP-5_VtUZ04c7eeQgjDgl-X4T51EJeCe0EM48dafZ16_WhE2ShGD5rEZ2wN/exec";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("signin").addEventListener("click", async () => {
+
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        const response = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            action: "login",
+            username,
+            password
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          window.location.href =
+            `https://londoncampaignsgroupreform-bit.github.io/campaign-map-pwa/index.html?token=${encodeURIComponent(result.token)}`;
+        } else {
+          alert(result.message);
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>
