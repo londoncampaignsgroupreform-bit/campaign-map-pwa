@@ -1,0 +1,26 @@
+<script>
+const API = "https://script.google.com/macros/s/AKfycbwmT_Xf9yP-5_VtUZ04c7eeQgjDgl-X4T51EJeCe0EM48dafZ16_WhE2ShGD5rEZ2wN/exec";
+
+document.getElementById("signin").addEventListener("click", async () => {
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  const response = await fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      action: "login",
+      username,
+      password
+    })
+  });
+
+  const result = await response.json();
+
+  if (result.success) {
+    window.location.href = `index.html?token=${encodeURIComponent(result.token)}`;
+  } else {
+    alert(result.message);
+  }
+});
+</script>
