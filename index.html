@@ -18,11 +18,11 @@ async function init() {
     return;
   }
 
-  // ✅ Now you have user, role, sheets
   console.log("Logged in as:", result.user);
   console.log("Role:", result.role);
 
-  loadMap(result);
+  // ✅ Correct function for the GitHub Pages version
+  initMap(result);
 }
 
 init();
