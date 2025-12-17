@@ -351,18 +351,17 @@
             const color = intentionColors[item.status] || "#cccccc";
 
             const marker = new google.maps.Marker({
-              position: { lat: offsetLat, lng: offsetLng },
-              title: `${item.status}: ${item.address}`,
-              map: map,
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                fillColor: color,
-                fillOpacity: 1,
-                strokeColor: "white",
-                strokeWeight: 1,
-                scale: 6
-              }
-            });
+  position: { lat: offsetLat, lng: offsetLng },
+  title: `${item.status}: ${item.address}`,
+  icon: {
+    path: google.maps.SymbolPath.CIRCLE,
+    fillColor: color,
+    fillOpacity: 1,
+    strokeColor: "white",
+    strokeWeight: 1,
+    scale: 6
+  }
+});
 
             marker.status = item.status;
             
