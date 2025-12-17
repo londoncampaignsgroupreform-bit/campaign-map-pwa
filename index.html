@@ -540,13 +540,14 @@ window._markerCluster = new markerClusterer.MarkerClusterer({
 
         const svgUrl = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
 
-        return new google.maps.Marker({
-          position,
-          icon: {
-            url: svgUrl,
-            scaledSize: new google.maps.Size(60, 60)
-          }
-        });
+        return {
+  url: svgUrl,
+  width: 60,
+  height: 60,
+  textColor: "#333",
+  textSize: 14,
+  anchorText: [30, 30]
+};
       }
     }
 });
