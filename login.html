@@ -47,6 +47,11 @@
         const username = document.getElementById("username").value.trim();
         const password = document.getElementById("password").value.trim();
 
+        if (!username || !password) {
+          alert("Please enter both username and password.");
+          return;
+        }
+
         const response = await fetch(API, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -60,10 +65,10 @@
         const result = await response.json();
 
         if (result.success) {
-          window.location.href =
-            `https://londoncampaignsgroupreform-bit.github.io/campaign-map-pwa/index.html?token=${encodeURIComponent(result.token)}`;window.location.href = "https://londoncampaignsgroupreform-bit.github.io/campaign-map-pwa/index.html?token=" + token;
+          const token = encodeURIComponent(result.token);
+          window.location.href = `index.html?token=${token}`;
         } else {
-          alert(result.message);
+          alert(result.message || "Login failed.");
         }
       });
     });
