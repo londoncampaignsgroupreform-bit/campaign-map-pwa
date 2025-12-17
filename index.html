@@ -205,127 +205,279 @@
 
     <!-- ✅ MAIN JAVASCRIPT -->
     <script>
-      const API = "https://script.google.com/macros/s/AKfycbwmT_Xf9yP-5_VtUZ04c7eeQgjDgl-X4T51EJeCe0EM48dafZ16_WhE2ShGD5rEZ2wN/exec";
+const API = "https://script.google.com/macros/s/AKfycbwmT_Xf9yP-5_VtUZ04c7eeQgjDgl-X4T51EJeCe0EM48dafZ16_WhE2ShGD5rEZ2wN/exec";
 
-      function escapeHTML(str) {
-        if (typeof str !== 'string') return String(str || '');
-        return str.replace(/[&<>'"]/g, c => ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          "'": "&#39;",
-          '"': "&quot;"
-        }[c]));
-      }
+function escapeHTML(str) {
+  if (typeof str !== 'string') return String(str || '');
+  return str.replace(/[&<>'"]/g, c => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;"
+  }[c]));
+}
 
-      let token = null;
-      let userInfo = null;
-      let map = null;
+let token = null;
+let userInfo = null;
+let map = null;
 
-      const wardCenters = {
-        "Bedfont": { lat: 51.4485, lng: -0.4325 },
-        "Feltham North": { lat: 51.4560, lng: -0.4080 },
-        "Feltham West": { lat: 51.4470, lng: -0.4170 },
-        "Hanworth Park": { lat: 51.4375, lng: -0.3860 },
-        "Hanworth Village": { lat: 51.4290, lng: -0.3790 }
-      };
+const wardCenters = {
+  "Bedfont": { lat: 51.4485, lng: -0.4325 },
+  "Feltham North": { lat: 51.4560, lng: -0.4080 },
+  "Feltham West": { lat: 51.4470, lng: -0.4170 },
+  "Hanworth Park": { lat: 51.4375, lng: -0.3860 },
+  "Hanworth Village": { lat: 51.4290, lng: -0.3790 }
+};
 
-      const defaultCenter = { lat: 51.4405, lng: -0.4085 };
+const defaultCenter = { lat: 51.4405, lng: -0.4085 };
 
-      async function init() {
-        const params = new URLSearchParams(window.location.search);
-        token = params.get("token");
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+  token = params.get("token");
 
-        if (!token) {
-          window.location.href = "login.html";
-          return;
+  if (!token) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  const validateRes = await fetch(`${API}?action=validate&token=${token}`);
+  const validateData = await validateRes.json();
+
+  if (!validateData.success) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  userInfo = validateData;
+
+  document.getElementById("userInfo").innerHTML = `
+    Logged in as <strong>${userInfo.user}</strong><br>
+    Role: <strong>${userInfo.role}</strong><br>
+    Access: ${userInfo.sheets.join(", ")}
+  `;
+
+  const sheetFilter = document.getElementById("sheetFilter");
+  userInfo.sheets.forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    sheetFilter.appendChild(opt);
+  });
+
+  initMap();
+}
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: defaultCenter,
+    zoom: 14.5,
+    mapId: "af62d6188c33c416abdb1c28",
+    gestureHandling: "greedy",
+    scrollwheel: true,
+    zoomControl: true,
+    streetViewControl: true,
+    mapTypeControl: true
+  });
+
+  fetchAndRenderMarkers();
+}
+
+async function fetchAndRenderMarkers() {
+  const res = await fetch(`${API}?action=map-data&token=${token}`);
+  const data = await res.json();
+  renderMarkers(data);
+}
+
+function showStatus(msg) {
+  const el = document.getElementById("statusMessage");
+  el.textContent = msg;
+  el.style.display = "block";
+  setTimeout(() => el.style.display = "none", 3000);
+}
+
+function renderMarkers(data) {
+  const selectedSheet = document.getElementById("sheetFilter").value;
+  if (!selectedSheet) {
+    showStatus("Please select a ward.");
+    return;
+  }
+
+  if (window._markersArray && window._markersArray.length) {
+    window._markersArray.forEach(m => m.setMap(null));
+  }
+  window._markersArray = [];
+
+  const grouped = {};
+  const bounds = new google.maps.LatLngBounds();
+
+  data.forEach((row) => {
+    let [lat, lng, address, status, notes, sheetName] = row;
+    const latNum = parseFloat(lat), lngNum = parseFloat(lng);
+    if (isNaN(latNum) || isNaN(lngNum)) return;
+    if (selectedSheet !== "All" && sheetName !== selectedSheet) return;
+
+    const key = `${latNum.toFixed(4)},${lngNum.toFixed(4)}`;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push({ lat: latNum, lng: lngNum, address, status, notes, sheetName });
+  });
+
+  if (Object.keys(grouped).length === 0) {
+    showStatus("No markers found.");
+    return;
+  }
+
+  const intentionColors = {
+    "Labour": "#e4003b",
+    "Tory": "#0087dc",
+    "Lib Dem": "#faa61a",
+    "Green": "#6ab023",
+    "Reform": "#00b3b3",
+    "Undecided": "#cccccc",
+    "Considering": "#999999",
+    "Against": "#000000",
+    "Knocked": "#9966cc"
+  };
+
+  Object.values(grouped).forEach((group) => {
+    const count = group.length;
+    const angleStep = (2 * Math.PI) / count;
+    const radius = 0.0001;
+
+    group.forEach((item, i) => {
+      const angle = i * angleStep;
+      const offsetLat = item.lat + radius * Math.cos(angle);
+      const offsetLng = item.lng + radius * Math.sin(angle);
+      const color = intentionColors[item.status] || "#cccccc";
+
+      const marker = new google.maps.Marker({
+        position: { lat: offsetLat, lng: offsetLng },
+        title: `${item.status}: ${item.address}`,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: color,
+          fillOpacity: 1,
+          strokeColor: "white",
+          strokeWeight: 1,
+          scale: 6
         }
+      });
 
-        const validateRes = await fetch(`${API}?action=validate&token=${token}`);
-        const validateData = await validateRes.json();
+      marker.status = item.status;
 
-        if (!validateData.success) {
-          window.location.href = "login.html";
-          return;
-        }
+      window._markersArray.push(marker);
+      bounds.extend(marker.getPosition());
 
-        userInfo = validateData;
+      const markerId = `marker-${item.lat}-${item.lng}-${i}`;
+      const popup = document.createElement("div");
+      popup.className = "popup-card";
+      popup.innerHTML = `
+        <strong>${escapeHTML(item.address)}</strong>
+        <label for="status-${markerId}">Voter Intention</label>
+        <select id="status-${markerId}">
+          <option value="" disabled ${!item.status ? "selected" : ""}>Select status...</option>
+          ${["Reform","Tory","Labour","Green","Lib Dem","Undecided","Considering","Against","Knocked"].map(opt =>
+            `<option value="${opt}" ${opt === item.status ? "selected" : ""}>${opt}</option>`
+          ).join("")}
+        </select>
+        <label for="notes-${markerId}">Notes</label>
+        <textarea id="notes-${markerId}" rows="3">${escapeHTML(item.notes)}</textarea>
+        <label>Ward: ${escapeHTML(item.sheetName)}</label>
+        <button id="saveBtn-${markerId}">Save</button>
+      `;
 
-        document.getElementById("userInfo").innerHTML = `
-          Logged in as <strong>${userInfo.user}</strong><br>
-          Role: <strong>${userInfo.role}</strong><br>
-          Access: ${userInfo.sheets.join(", ")}
-        `;
+      const infoWindow = new google.maps.InfoWindow({ content: popup });
 
-        const sheetFilter = document.getElementById("sheetFilter");
-        userInfo.sheets.forEach(s => {
-          const opt = document.createElement("option");
-          opt.value = s;
-          opt.textContent = s;
-          sheetFilter.appendChild(opt);
+      marker.addListener("click", () => {
+        infoWindow.open(map, marker);
+        google.maps.event.addListenerOnce(infoWindow, "domready", () => {
+          const saveBtn = document.getElementById(`saveBtn-${markerId}`);
+          const statusField = document.getElementById(`status-${markerId}`);
+          const notesField = document.getElementById(`notes-${markerId}`);
+
+          saveBtn.onclick = async () => {
+            const newStatus = statusField.value;
+            const newNotes = notesField.value;
+            const latLong = `${item.lat},${item.lng}`;
+            const sheetName = item.sheetName;
+
+            await fetch(API, {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: new URLSearchParams({
+                action: "updateStatus",
+                latLong,
+                newStatus,
+                newNotes,
+                user: userInfo.user,
+                sheetName
+              })
+            });
+
+            const updatedColor = intentionColors[newStatus] || "#cccccc";
+            marker.setIcon({
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: updatedColor,
+              fillOpacity: 1,
+              strokeColor: "white",
+              strokeWeight: 1,
+              scale: 6
+            });
+
+            infoWindow.close();
+            showModal();
+          };
         });
+      });
+    });
+  });
 
-        initMap();
+  if (!bounds.isEmpty()) {
+    try { map.fitBounds(bounds); } catch (e) {}
+  }
+
+  const center = wardCenters[selectedSheet] || defaultCenter;
+  map.setCenter(center);
+  map.setZoom(14.5);
+
+  if (window._markerCluster) {
+    window._markerCluster.clearMarkers();
+  }
+
+  window._markerCluster = new markerClusterer.MarkerClusterer({
+    map,
+    markers: window._markersArray,
+
+    onClusterClick: (cluster) => {
+      const markers = cluster.markers;
+
+      const counts = {};
+      markers.forEach(m => {
+        const s = m.status || "Undecided";
+        counts[s] = (counts[s] || 0) + 1;
+      });
+
+      let breakdown = "<strong>Cluster Breakdown</strong><br>";
+      for (const s in counts) {
+        breakdown += `${s}: ${counts[s]}<br>`;
       }
 
-      function initMap() {
-        map = new google.maps.Map(document.getElementById("map"), {
-          center: defaultCenter,
-          zoom: 14.5,
-          mapId: "af62d6188c33c416abdb1c28",
-          gestureHandling: "greedy",
-          scrollwheel: true,
-          zoomControl: true,
-          streetViewControl: true,
-          mapTypeControl: true
+      const info = new google.maps.InfoWindow({
+        content: breakdown,
+        position: cluster.position
+      });
+
+      info.open(map);
+      return false;
+    },
+
+    renderer: {
+      render: ({ count, markers, position }) => {
+        const statusCounts = {};
+        markers.forEach(m => {
+          const s = m.status || "Undecided";
+          statusCounts[s] = (statusCounts[s] || 0) + 1;
         });
-
-        fetchAndRenderMarkers();
-      }
-
-      async function fetchAndRenderMarkers() {
-        const res = await fetch(`${API}?action=map-data&token=${token}`);
-        const data = await res.json();
-        renderMarkers(data);
-      }
-
-      function showStatus(msg) {
-        const el = document.getElementById("statusMessage");
-        el.textContent = msg;
-        el.style.display = "block";
-        setTimeout(() => el.style.display = "none", 3000);
-      }
-
-      function renderMarkers(data) {
-        const selectedSheet = document.getElementById("sheetFilter").value;
-        if (!selectedSheet) {
-          showStatus("Please select a ward.");
-          return;
-        }
-
-        if (window._markersArray && window._markersArray.length) {
-          window._markersArray.forEach(m => m.setMap(null));
-        }
-        window._markersArray = [];
-
-        const grouped = {};
-        const bounds = new google.maps.LatLngBounds();
-
-        data.forEach((row) => {
-          let [lat, lng, address, status, notes, sheetName] = row;
-          const latNum = parseFloat(lat), lngNum = parseFloat(lng);
-          if (isNaN(latNum) || isNaN(lngNum)) return;
-          if (selectedSheet !== "All" && sheetName !== selectedSheet) return;
-
-          const key = `${latNum.toFixed(4)},${lngNum.toFixed(4)}`;
-          if (!grouped[key]) grouped[key] = [];
-          grouped[key].push({ lat: latNum, lng: lngNum, address, status, notes, sheetName });
-        });
-
-        if (Object.keys(grouped).length === 0) {
-          showStatus("No markers found.");
-          return;
-        }
 
         const intentionColors = {
           "Labour": "#e4003b",
@@ -339,233 +491,67 @@
           "Knocked": "#9966cc"
         };
 
-        Object.values(grouped).forEach((group) => {
-          const count = group.length;
-          const angleStep = (2 * Math.PI) / count;
-          const radius = 0.0001;
+        const total = markers.length;
+        let startAngle = 0;
+        const slices = [];
 
-          group.forEach((item, i) => {
-            const angle = i * angleStep;
-            const offsetLat = item.lat + radius * Math.cos(angle);
-            const offsetLng = item.lng + radius * Math.sin(angle);
-            const color = intentionColors[item.status] || "#cccccc";
+        for (const status in statusCounts) {
+          const value = statusCounts[status];
+          const angle = (value / total) * Math.PI * 2;
+          const endAngle = startAngle + angle;
 
-            const marker = new google.maps.Marker({
-  position: { lat: offsetLat, lng: offsetLng },
-  title: `${item.status}: ${item.address}`,
-  icon: {
-    path: google.maps.SymbolPath.CIRCLE,
-    fillColor: color,
-    fillOpacity: 1,
-    strokeColor: "white",
-    strokeWeight: 1,
-    scale: 6
-  }
-});
+          const x1 = 50 + 50 * Math.cos(startAngle);
+          const y1 = 50 + 50 * Math.sin(startAngle);
+          const x2 = 50 + 50 * Math.cos(endAngle);
+          const y2 = 50 + 50 * Math.sin(endAngle);
 
-            marker.status = item.status;
-            
-            window._markersArray.push(marker);
-            bounds.extend(marker.getPosition());
+          const largeArc = angle > Math.PI ? 1 : 0;
 
-            const markerId = `marker-${item.lat}-${item.lng}-${i}`;
-            const popup = document.createElement("div");
-            popup.className = "popup-card";
-            popup.innerHTML = `
-              <strong>${escapeHTML(item.address)}</strong>
-              <label for="status-${markerId}">Voter Intention</label>
-              <select id="status-${markerId}">
-                <option value="" disabled ${!item.status ? "selected" : ""}>Select status...</option>
-                ${["Reform","Tory","Labour","Green","Lib Dem","Undecided","Considering","Against","Knocked"].map(opt =>
-                  `<option value="${opt}" ${opt === item.status ? "selected" : ""}>${opt}</option>`
-                ).join("")}
-              </select>
-              <label for="notes-${markerId}">Notes</label>
-              <textarea id="notes-${markerId}" rows="3">${escapeHTML(item.notes)}</textarea>
-              <label>Ward: ${escapeHTML(item.sheetName)}</label>
-              <button id="saveBtn-${markerId}">Save</button>
-            `;
+          const path = `
+            M 50 50
+            L ${x1} ${y1}
+            A 50 50 0 ${largeArc} 1 ${x2} ${y2}
+            Z
+          `;
 
-            const infoWindow = new google.maps.InfoWindow({ content: popup });
+          slices.push(`
+            <path d="${path}"
+                  fill="${intentionColors[status] || "#cccccc"}"
+                  stroke="white"
+                  stroke-width="1"/>
+          `);
 
-            marker.addListener("click", () => {
-              infoWindow.open(map, marker);
-              google.maps.event.addListenerOnce(infoWindow, "domready", () => {
-                const saveBtn = document.getElementById(`saveBtn-${markerId}`);
-                const statusField = document.getElementById(`status-${markerId}`);
-                const notesField = document.getElementById(`notes-${markerId}`);
-
-                saveBtn.onclick = async () => {
-                  const newStatus = statusField.value;
-                  const newNotes = notesField.value;
-                  const latLong = `${item.lat},${item.lng}`;
-                  const sheetName = item.sheetName;
-
-                  await fetch(API, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({
-                      action: "updateStatus",
-                      latLong,
-                      newStatus,
-                      newNotes,
-                      user: userInfo.user,
-                      sheetName
-                    })
-                  });
-
-                  const updatedColor = intentionColors[newStatus] || "#cccccc";
-                  marker.setIcon({
-                    path: google.maps.SymbolPath.CIRCLE,
-                    fillColor: updatedColor,
-                    fillOpacity: 1,
-                    strokeColor: "white",
-                    strokeWeight: 1,
-                    scale: 6
-                  });
-
-                  infoWindow.close();
-                  showModal();
-                };
-              });
-            });
-          });
-        });
-
-        if (!bounds.isEmpty() && Object.keys(grouped).length > 0) {
-          try { map.fitBounds(bounds); } catch (e) {}
+          startAngle = endAngle;
         }
 
-        const center = wardCenters[selectedSheet] || defaultCenter;
-        map.setCenter(center);
-        map.setZoom(14.5);
+        const svg = `
+          <svg width="60" height="60" viewBox="0 0 100 100">
+            ${slices.join("")}
+            <circle cx="50" cy="50" r="30" fill="white"/>
+            <text x="50" y="57"
+                  text-anchor="middle"
+                  font-size="28"
+                  font-weight="bold"
+                  fill="#333">
+              ${count}
+            </text>
+          </svg>
+        `;
 
-        if (window._markerCluster) {
-  window._markerCluster.clearMarkers();
-}
+        const svgUrl = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
 
-window._markerCluster = new markerClusterer.MarkerClusterer({
-  map,
-  markers: window._markersArray,
-
-  // ✅ CLICK HANDLER — show breakdown popup instead of zooming
-onClusterClick: (cluster) => {
-  const markers = cluster.markers;
-
-  // Count statuses
-  const counts = {};
-  markers.forEach(m => {
-    const s = m.status || "Undecided";
-    counts[s] = (counts[s] || 0) + 1;
-  });
-
-  // Build breakdown HTML
-  let breakdown = "<strong>Cluster Breakdown</strong><br>";
-  for (const s in counts) {
-    breakdown += `${s}: ${counts[s]}<br>`;
-  }
-
-  // Show popup
-  const info = new google.maps.InfoWindow({
-    content: breakdown,
-    position: cluster.position
-  });
-
-  info.open(map);
-
-  // Prevent auto-zoom
-  return false;
-},   // ✅ THIS COMMA AND BRACE WERE MISSING
-
-// ✅ CUSTOM RENDERER — pie chart cluster icon
-renderer: {
-  render: ({ count, markers, position }) => {
-
-    // Count statuses
-    const statusCounts = {};
-    markers.forEach(m => {
-      const s = m.status || "Undecided";
-      statusCounts[s] = (statusCounts[s] || 0) + 1;
-    });
-
-    // Colour map
-    const intentionColors = {
-      "Labour": "#e4003b",
-      "Tory": "#0087dc",
-      "Lib Dem": "#faa61a",
-      "Green": "#6ab023",
-      "Reform": "#00b3b3",
-      "Undecided": "#cccccc",
-      "Considering": "#999999",
-      "Against": "#000000",
-      "Knocked": "#9966cc"
-    };
-
-    // Build pie slices
-    const total = markers.length;
-    let startAngle = 0;
-    const slices = [];
-
-    for (const status in statusCounts) {
-      const value = statusCounts[status];
-      const angle = (value / total) * Math.PI * 2;
-      const endAngle = startAngle + angle;
-
-      const x1 = 50 + 50 * Math.cos(startAngle);
-      const y1 = 50 + 50 * Math.sin(startAngle);
-      const x2 = 50 + 50 * Math.cos(endAngle);
-      const y2 = 50 + 50 * Math.sin(endAngle);
-
-      const largeArc = angle > Math.PI ? 1 : 0;
-
-      const path = `
-        M 50 50
-        L ${x1} ${y1}
-        A 50 50 0 ${largeArc} 1 ${x2} ${y2}
-        Z
-      `;
-
-      slices.push(`
-        <path d="${path}"
-              fill="${intentionColors[status] || "#cccccc"}"
-              stroke="white"
-              stroke-width="1"/>
-      `);
-
-      startAngle = endAngle;
-    }
-
-    // Build SVG
-    const svg = `
-      <svg width="60" height="60" viewBox="0 0 100 100">
-        ${slices.join("")}
-        <circle cx="50" cy="50" r="30" fill="white"/>
-        <text x="50" y="57"
-              text-anchor="middle"
-              font-size="28"
-              font-weight="bold"
-              fill="#333">
-          ${count}
-        </text>
-      </svg>
-    `;
-
-    const svgUrl = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
-
-    return new google.maps.Marker({
-      position,
-      icon: {
-        url: svgUrl,
-        scaledSize: new google.maps.Size(60, 60)
+        return new google.maps.Marker({
+          position,
+          icon: {
+            url: svgUrl,
+            scaledSize: new google.maps.Size(60, 60)
+          }
+        });
       }
-    });
-  }
+    }
+  });
 }
-});   // ✅ closes MarkerClusterer
 
-}   // ✅ closes renderMarkers()
-
-// ✅ DOMContentLoaded handlers
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("sheetFilter").addEventListener("change", fetchAndRenderMarkers);
 
@@ -621,7 +607,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-// ✅ Modal function
 function showModal() {
   const modal = document.getElementById("saveModal");
   modal.style.display = "flex";
@@ -629,8 +614,7 @@ function showModal() {
     modal.style.display = "none";
   }, 1000);
 }
-
-    </script>
+</script>
   </head>
 
   <body>
