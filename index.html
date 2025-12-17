@@ -364,6 +364,8 @@
               }
             });
 
+            marker.status = item.status;
+            
             window._markersArray.push(marker);
             bounds.extend(marker.getPosition());
 
@@ -440,12 +442,99 @@
         map.setZoom(14.5);
 
         if (window._markerCluster) {
-          window._markerCluster.clearMarkers();
+  window._markerCluster.clearMarkers();
+}
+
+window._markerCluster = new markerClusterer.MarkerClusterer({
+  map,
+  markers: window._markersArray,
+
+  // ✅ CLICK HANDLER — show breakdown popup instead of zooming
+  onClusterClick: (cluster) => {
+    const markers = cluster.markers;
+
+    // Count statuses
+    const counts = {};
+    markers.forEach(m => {
+      const s = m.status || "Undecided";
+      counts[s] = (counts[s] || 0) + 1;
+    });
+
+    // Build breakdown HTML
+    let breakdown = "<strong>Cluster Breakdown</strong><br>";
+    for (const s in counts) {
+      breakdown += `${s}: ${counts[s]}<br>`;
+    }
+
+    // Show popup
+    const info = new google.maps.InfoWindow({
+      content: breakdown,
+      position: cluster.position
+    });
+
+    info.open(map);
+
+    // Prevent auto-zoom
+    return false;
+  },
+
+  // ✅ CUSTOM RENDERER — colour cluster by dominant status
+  renderer: {
+    render: ({ count, markers, position }) => {
+
+      // Count statuses
+      const statusCounts = {};
+      markers.forEach(m => {
+        const s = m.status || "Undecided";
+        statusCounts[s] = (statusCounts[s] || 0) + 1;
+      });
+
+      // Find dominant status
+      let dominantStatus = null;
+      let maxCount = 0;
+      for (const s in statusCounts) {
+        if (statusCounts[s] > maxCount) {
+          maxCount = statusCounts[s];
+          dominantStatus = s;
         }
-        window._markerCluster = new markerClusterer.MarkerClusterer({
-          map,
-          markers: window._markersArray
-        });
+      }
+
+      // Your existing colour map
+      const intentionColors = {
+        "Labour": "#e4003b",
+        "Tory": "#0087dc",
+        "Lib Dem": "#faa61a",
+        "Green": "#6ab023",
+        "Reform": "#00b3b3",
+        "Undecided": "#cccccc",
+        "Considering": "#999999",
+        "Against": "#000000",
+        "Knocked": "#9966cc"
+      };
+
+      const fill = intentionColors[dominantStatus] || "#cccccc";
+
+      // Return custom cluster icon
+      return new google.maps.Marker({
+        position,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: fill,
+          fillOpacity: 0.9,
+          strokeColor: "white",
+          strokeWeight: 2,
+          scale: Math.max(20, Math.min(40, count * 2))
+        },
+        label: {
+          text: String(count),
+          color: "white",
+          fontSize: "14px",
+          fontWeight: "bold"
+        }
+      });
+    }
+  }
+});
       }
 
       document.addEventListener("DOMContentLoaded", () => {
