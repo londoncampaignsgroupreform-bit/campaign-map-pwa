@@ -442,9 +442,9 @@ function renderMarkers(data) {
 
   if (window._markerCluster) {
     window._markerCluster.clearMarkers();
-  }
+}
 
-  window._markerCluster = new markerClusterer.MarkerClusterer({
+window._markerCluster = new markerClusterer.MarkerClusterer({
     map,
     markers: window._markersArray,
 
@@ -549,7 +549,7 @@ function renderMarkers(data) {
         });
       }
     }
-  });
+});
 }
 
 document.addEventListener("DOMContentLoaded", () => {
