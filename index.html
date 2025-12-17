@@ -449,35 +449,35 @@ window._markerCluster = new markerClusterer.MarkerClusterer({
   markers: window._markersArray,
 
   // ✅ CLICK HANDLER — show breakdown popup instead of zooming
-  onClusterClick: (cluster) => {
-    const markers = cluster.markers;
+onClusterClick: (cluster) => {
+  const markers = cluster.markers;
 
-    // Count statuses
-    const counts = {};
-    markers.forEach(m => {
-      const s = m.status || "Undecided";
-      counts[s] = (counts[s] || 0) + 1;
-    });
+  // Count statuses
+  const counts = {};
+  markers.forEach(m => {
+    const s = m.status || "Undecided";
+    counts[s] = (counts[s] || 0) + 1;
+  });
 
-    // Build breakdown HTML
-    let breakdown = "<strong>Cluster Breakdown</strong><br>";
-    for (const s in counts) {
-      breakdown += `${s}: ${counts[s]}<br>`;
-    }
+  // Build breakdown HTML
+  let breakdown = "<strong>Cluster Breakdown</strong><br>";
+  for (const s in counts) {
+    breakdown += `${s}: ${counts[s]}<br>`;
+  }
 
-    // Show popup
-    const info = new google.maps.InfoWindow({
-      content: breakdown,
-      position: cluster.position
-    });
+  // Show popup
+  const info = new google.maps.InfoWindow({
+    content: breakdown,
+    position: cluster.position
+  });
 
-    info.open(map);
+  info.open(map);
 
-    // Prevent auto-zoom
-    return false;
-  },
+  // Prevent auto-zoom
+  return false;
+},   // ✅ THIS COMMA AND BRACE WERE MISSING
 
-  // ✅ CUSTOM RENDERER — pie chart cluster icon
+// ✅ CUSTOM RENDERER — pie chart cluster icon
 renderer: {
   render: ({ count, markers, position }) => {
 
@@ -563,7 +563,7 @@ renderer: {
 }
 });   // ✅ closes MarkerClusterer
 
-}   // ✅ closes renderMarkers() — THIS was missing
+}   // ✅ closes renderMarkers()
 
 // ✅ DOMContentLoaded handlers
 document.addEventListener("DOMContentLoaded", () => {
