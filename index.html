@@ -475,46 +475,6 @@
         });
       }
 
-      document.addEventListener("DOMContentLoaded", () => {
-        document.getElementById("locateMeBtn").addEventListener("click", () => {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((position) => {
-              const userLocation = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-              };
-              new google.maps.Marker({
-                position: userLocation,
-                map,
-                title: "You are here",
-                icon: {
-                  path: google.maps.SymbolPath.CIRCLE,
-                  fillColor: "#4285F4",
-                  fillOpacity: 1,
-                  strokeColor: "white",
-                  strokeWeight: 2,
-                  scale: 8
-                }
-              });
-              new google.maps.Circle({
-                strokeColor: "#4285F4",
-                strokeOpacity: 0.8,
-                strokeWeight: 1,
-                fillColor: "#4285F4",
-                fillOpacity: 0.2,
-                map,
-                center: userLocation,
-                radius: position.coords.accuracy || 50
-              });
-              map.setCenter(userLocation);
-            }, () => {
-              showStatus("Location access denied or unavailable.");
-            });
-          } else {
-            showStatus("Geolocation not supported.");
-          }
-        });
-
         document.getElementById("sheetFilter").addEventListener("change", fetchAndRenderMarkers);
 
         document.getElementById("logoutBtn").addEventListener("click", () => {
@@ -527,8 +487,46 @@
         });
 
         document.getElementById("locateBtn").addEventListener("click", () => {
-          document.getElementById("locateMeBtn").click();
-        });
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((position) => {
+      const userLocation = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      };
+
+      new google.maps.Marker({
+        position: userLocation,
+        map,
+        title: "You are here",
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: "#4285F4",
+          fillOpacity: 1,
+          strokeColor: "white",
+          strokeWeight: 2,
+          scale: 8
+        }
+      });
+
+      new google.maps.Circle({
+        strokeColor: "#4285F4",
+        strokeOpacity: 0.8,
+        strokeWeight: 1,
+        fillColor: "#4285F4",
+        fillOpacity: 0.2,
+        map,
+        center: userLocation,
+        radius: position.coords.accuracy || 50
+      });
+
+      map.setCenter(userLocation);
+    }, () => {
+      showStatus("Location access denied or unavailable.");
+    });
+  } else {
+    showStatus("Geolocation not supported.");
+  }
+});
 
         document.getElementById("logoutToolbarBtn").addEventListener("click", () => {
           document.getElementById("logoutBtn").click();
