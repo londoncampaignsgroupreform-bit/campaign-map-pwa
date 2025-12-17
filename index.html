@@ -479,90 +479,90 @@ window._markerCluster = new markerClusterer.MarkerClusterer({
   },
 
   // ✅ CUSTOM RENDERER — pie chart cluster icon
-renderer: {
-  render: ({ count, markers, position }) => {
+  renderer: {
+    render: ({ count, markers, position }) => {
 
-    // Count statuses
-    const statusCounts = {};
-    markers.forEach(m => {
-      const s = m.status || "Undecided";
-      statusCounts[s] = (statusCounts[s] || 0) + 1;
-    });
+      // Count statuses
+      const statusCounts = {};
+      markers.forEach(m => {
+        const s = m.status || "Undecided";
+        statusCounts[s] = (statusCounts[s] || 0) + 1;
+      });
 
-    // Colour map
-    const intentionColors = {
-      "Labour": "#e4003b",
-      "Tory": "#0087dc",
-      "Lib Dem": "#faa61a",
-      "Green": "#6ab023",
-      "Reform": "#00b3b3",
-      "Undecided": "#cccccc",
-      "Considering": "#999999",
-      "Against": "#000000",
-      "Knocked": "#9966cc"
-    };
+      // Colour map
+      const intentionColors = {
+        "Labour": "#e4003b",
+        "Tory": "#0087dc",
+        "Lib Dem": "#faa61a",
+        "Green": "#6ab023",
+        "Reform": "#00b3b3",
+        "Undecided": "#cccccc",
+        "Considering": "#999999",
+        "Against": "#000000",
+        "Knocked": "#9966cc"
+      };
 
-    // Build pie slices
-    const total = markers.length;
-    let startAngle = 0;
-    const slices = [];
+      // Build pie slices
+      const total = markers.length;
+      let startAngle = 0;
+      const slices = [];
 
-    for (const status in statusCounts) {
-      const value = statusCounts[status];
-      const angle = (value / total) * Math.PI * 2;
-      const endAngle = startAngle + angle;
+      for (const status in statusCounts) {
+        const value = statusCounts[status];
+        const angle = (value / total) * Math.PI * 2;
+        const endAngle = startAngle + angle;
 
-      const x1 = 50 + 50 * Math.cos(startAngle);
-      const y1 = 50 + 50 * Math.sin(startAngle);
-      const x2 = 50 + 50 * Math.cos(endAngle);
-      const y2 = 50 + 50 * Math.sin(endAngle);
+        const x1 = 50 + 50 * Math.cos(startAngle);
+        const y1 = 50 + 50 * Math.sin(startAngle);
+        const x2 = 50 + 50 * Math.cos(endAngle);
+        const y2 = 50 + 50 * Math.sin(endAngle);
 
-      const largeArc = angle > Math.PI ? 1 : 0;
+        const largeArc = angle > Math.PI ? 1 : 0;
 
-      const path = `
-        M 50 50
-        L ${x1} ${y1}
-        A 50 50 0 ${largeArc} 1 ${x2} ${y2}
-        Z
+        const path = `
+          M 50 50
+          L ${x1} ${y1}
+          A 50 50 0 ${largeArc} 1 ${x2} ${y2}
+          Z
+        `;
+
+        slices.push(`
+          <path d="${path}"
+                fill="${intentionColors[status] || "#cccccc"}"
+                stroke="white"
+                stroke-width="1"/>
+        `);
+
+        startAngle = endAngle;
+      }
+
+      // Build SVG
+      const svg = `
+        <svg width="60" height="60" viewBox="0 0 100 100">
+          ${slices.join("")}
+          <circle cx="50" cy="50" r="30" fill="white"/>
+          <text x="50" y="57"
+                text-anchor="middle"
+                font-size="28"
+                font-weight="bold"
+                fill="#333">
+            ${count}
+          </text>
+        </svg>
       `;
 
-      slices.push(`
-        <path d="${path}"
-              fill="${intentionColors[status] || "#cccccc"}"
-              stroke="white"
-              stroke-width="1"/>
-      `);
+      const svgUrl = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
 
-      startAngle = endAngle;
+      return new google.maps.Marker({
+        position,
+        icon: {
+          url: svgUrl,
+          scaledSize: new google.maps.Size(60, 60)
+        }
+      });
     }
-
-    // Build SVG
-    const svg = `
-      <svg width="60" height="60" viewBox="0 0 100 100">
-        ${slices.join("")}
-        <circle cx="50" cy="50" r="30" fill="white"/>
-        <text x="50" y="57"
-              text-anchor="middle"
-              font-size="28"
-              font-weight="bold"
-              fill="#333">
-          ${count}
-        </text>
-      </svg>
-    `;
-
-    const svgUrl = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
-
-    return new google.maps.Marker({
-      position,
-      icon: {
-        url: svgUrl,
-        scaledSize: new google.maps.Size(60, 60)
-      }
-    });
   }
-}
-      }
+});
 
       document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("sheetFilter").addEventListener("change", fetchAndRenderMarkers);
