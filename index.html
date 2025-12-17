@@ -184,29 +184,33 @@
       }
 
       #mobileToolbar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        display: flex;
-        justify-content: space-around;
-        background: #0078d4;
-        padding: 8px 0;
-        z-index: 10000;
-      }
+  position: fixed;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 420px;
+  display: flex;
+  justify-content: space-between;
+  background: #0078d4;
+  padding: 10px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  z-index: 10000;
+}
 
       #mobileToolbar button {
-        flex: 1;
-        margin: 0 6px;
-        padding: 12px;
-        font-size: 15px;
-        font-weight: 600;
-        border: none;
-        border-radius: 6px;
-        background: #fff;
-        color: #0078d4;
-        cursor: pointer;
-      }
+  flex: 1;
+  margin: 0 6px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  color: #0078d4;
+  cursor: pointer;
+}
 
       #mobileToolbar button:hover {
         background: #e6f0fa;
