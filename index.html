@@ -556,6 +556,16 @@ window._markerCluster = new markerClusterer.MarkerClusterer({
 
     const svgUrl = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
 
+return {
+  url: svgUrl,
+  width: 60,
+  height: 60,
+  anchorIcon: [30, 30],   // ✅ required by MarkerClusterer v2
+  anchorText: [30, 30],   // ✅ required by MarkerClusterer v2
+  textColor: "#333",
+  textSize: 14
+};
+    
     // ✅ Correct return type for MarkerClusterer v2
     return {
       url: svgUrl,
