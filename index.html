@@ -526,32 +526,33 @@ const clusterRenderer = {
       startAngle = endAngle;
     }
 
+    // ✅ CLEAN, VALID SVG BLOCK
     const svg = `
-  <svg width="60" height="60" viewBox="0 0 100 100">
-    ${slices.join("")}
-    <circle cx="50" cy="50" r="30" fill="white"/>
-    <text x="50" y="57"
-          text-anchor="middle"
-          font-size="28"
-          font-weight="bold"
-          fill="#333">
-      ${count}
-    </text>
-  </svg>
-`;
+      <svg width="60" height="60" viewBox="0 0 100 100">
+        ${slices.join("")}
+        <circle cx="50" cy="50" r="30" fill="white"/>
+        <text x="50" y="57"
+              text-anchor="middle"
+              font-size="28"
+              font-weight="bold"
+              fill="#333">
+          ${count}
+        </text>
+      </svg>
+    `;
 
-      const svgUrl = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+    const svgUrl = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
 
-      return {
-        url: svgUrl,
-        width: 60,
-        height: 60,
-        anchorIcon: [30, 30],
-        anchorText: [30, 30],
-        textColor: "#333",
-        textSize: 14
-      };
-    }
+    return {
+      url: svgUrl,
+      width: 60,
+      height: 60,
+      anchorIcon: [30, 30],
+      anchorText: [30, 30],
+      textColor: "#333",
+      textSize: 14
+    };
+  }
 };
 
 // ✅ DOM event listeners
