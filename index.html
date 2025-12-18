@@ -203,8 +203,7 @@
     <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
 
     <script>
-
-    const API = "https://script.google.com/macros/s/AKfycbwmT_Xf9yP-5_VtUZ04c7eeQgjDgl-X4T51EJeCe0EM48dafZ16_WhE2ShGD5rEZ2wN/exec";
+const API = "https://script.google.com/macros/s/AKfycbwmT_Xf9yP-5_VtUZ04c7eeQgjDgl-X4T51EJeCe0EM48dafZ16_WhE2ShGD5rEZ2wN/exec";
 
 function escapeHTML(str) {
   if (typeof str !== 'string') return String(str || '');
@@ -436,17 +435,18 @@ function renderMarkers(data) {
   }
 
   window._markerCluster = new markerClusterer.MarkerClusterer({
-  map,
-  markers: window._markersArray,
-  onClusterClick: clusterClickHandler,
-  renderer: clusterRenderer
-});
+    map,
+    markers: window._markersArray,
+    onClusterClick: clusterClickHandler,
+    renderer: clusterRenderer
+  });
 
-// ✅ ADD THIS
-if (selectedSheet !== "All") {
-  const center = wardCenters[selectedSheet] || defaultCenter;
-  map.setCenter(center);
-  map.setZoom(14.5);
+  // ✅ Ward zoom only (Option A)
+  if (selectedSheet !== "All") {
+    const center = wardCenters[selectedSheet] || defaultCenter;
+    map.setCenter(center);
+    map.setZoom(14.5);
+  }
 }
 
 function clusterClickHandler(cluster) {
@@ -526,7 +526,6 @@ const clusterRenderer = {
       startAngle = endAngle;
     }
 
-    // ✅ CLEAN, VALID SVG BLOCK
     const svg = `
       <svg width="60" height="60" viewBox="0 0 100 100">
         ${slices.join("")}
@@ -555,9 +554,9 @@ const clusterRenderer = {
   }
 };
 
-// ✅ DOM event listeners
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("sheetFilter").addEventListener("change", fetchAndRenderMarkers);
+
+    document.getElementById("sheetFilter").addEventListener("change", fetchAndRenderMarkers);
 
   document.getElementById("filterBtn").addEventListener("click", () => {
     const selector = document.getElementById("wardSelector");
