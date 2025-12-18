@@ -363,7 +363,10 @@ function renderMarkers(data) {
         }
       });
 
-      window._markersArray.push(marker);
+      // ✅ Only push real canvassing markers into the clusterer
+  if (!marker.isUserMarker) {
+  window._markersArray.push(marker);
+}
       bounds.extend(marker.getPosition());
 
       const markerId = `marker-${item.lat}-${item.lng}-${i}`;
