@@ -449,11 +449,6 @@ if (selectedSheet !== "All") {
   map.setZoom(14.5);
 }
 
-// ✅ Delay fitBounds until AFTER clusterer is ready
-google.maps.event.addListenerOnce(map, "idle", () => {
-  map.fitBounds(bounds);
-});
-
 function clusterClickHandler(cluster) {
   const markers = cluster.markers;
 
