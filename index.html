@@ -200,11 +200,11 @@
       }
     </style>
 
-    <!-- MarkerClusterer -->
     <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
 
-    <!-- ✅ MAIN JAVASCRIPT -->
     <script>
+
+      <script>
 const API = "https://script.google.com/macros/s/AKfycbwmT_Xf9yP-5_VtUZ04c7eeQgjDgl-X4T51EJeCe0EM48dafZ16_WhE2ShGD5rEZ2wN/exec";
 
 function escapeHTML(str) {
@@ -303,7 +303,8 @@ function renderMarkers(data) {
     return;
   }
 
-  if (window._markersArray && window._markersArray.length) {
+  // Clear old markers
+  if (window._markersArray) {
     window._markersArray.forEach(m => m.setMap(null));
   }
   window._markersArray = [];
@@ -311,6 +312,7 @@ function renderMarkers(data) {
   const grouped = {};
   const bounds = new google.maps.LatLngBounds();
 
+  // Group rows by coordinate
   data.forEach((row) => {
     let [lat, lng, address, status, notes, sheetName] = row;
     const latNum = parseFloat(lat), lngNum = parseFloat(lng);
@@ -339,6 +341,7 @@ function renderMarkers(data) {
     "Knocked": "#9966cc"
   };
 
+  // Build markers
   Object.values(grouped).forEach((group) => {
     const count = group.length;
     const angleStep = (2 * Math.PI) / count;
@@ -351,24 +354,24 @@ function renderMarkers(data) {
       const color = intentionColors[item.status] || "#cccccc";
 
       const marker = new google.maps.Marker({
-  position: { lat: offsetLat, lng: offsetLng },
-  map: null,   // ✅ CRITICAL FIX
-  title: `${item.status}: ${item.address}`,
-  icon: {
-    path: google.maps.SymbolPath.CIRCLE,
-    fillColor: color,
-    fillOpacity: 1,
-    strokeColor: "white",
-    strokeWeight: 1,
-    scale: 6
-  }
-});
-
-      marker.status = item.status;
+        position: { lat: offsetLat, lng: offsetLng },
+        map: null, // ✅ REQUIRED for MarkerClusterer v2
+        status: item.status || "Undecided",
+        title: `${item.status}: ${item.address}`,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: color,
+          fillOpacity: 1,
+          strokeColor: "white",
+          strokeWeight: 1,
+          scale: 6
+        }
+      });
 
       window._markersArray.push(marker);
       bounds.extend(marker.getPosition());
 
+      // Popup UI
       const markerId = `marker-${item.lat}-${item.lng}-${i}`;
       const popup = document.createElement("div");
       popup.className = "popup-card";
@@ -433,129 +436,132 @@ function renderMarkers(data) {
     });
   });
 
-  if (!bounds.isEmpty()) {
-    try { map.fitBounds(bounds); } catch (e) {}
+  // ✅ Build clusters FIRST
+  if (window._markerCluster) {
+    window._markerCluster.clearMarkers();
   }
 
-  const center = wardCenters[selectedSheet] || defaultCenter;
-  map.setCenter(center);
-  map.setZoom(14.5);
+  window._markerCluster = new markerClusterer.MarkerClusterer({
+    map,
+    markers: window._markersArray,
+    onClusterClick: clusterClickHandler,
+    renderer: clusterRenderer
+  });
 
-  if (window._markerCluster) {
-  window._markerCluster.clearMarkers();
+  // ✅ Delay fitBounds until AFTER clusterer is ready
+  google.maps.event.addListenerOnce(map, "idle", () => {
+    map.fitBounds(bounds);
+  });
 }
 
-window._markerCluster = new markerClusterer.MarkerClusterer({
-  map,
-  markers: window._markersArray,
+// ✅ Cluster click breakdown popup
+function clusterClickHandler(cluster) {
+  const markers = cluster.markers;
 
-  onClusterClick: (cluster) => {
-    const markers = cluster.markers;
+  const counts = {};
+  markers.forEach(m => {
+    const s = m.status || "Undecided";
+    counts[s] = (counts[s] || 0) + 1;
+  });
 
-    const counts = {};
+  let breakdown = "<strong>Cluster Breakdown</strong><br>";
+  for (const s in counts) {
+    breakdown += `${s}: ${counts[s]}<br>`;
+  }
+
+  const info = new google.maps.InfoWindow({
+    content: breakdown,
+    position: cluster.position
+  });
+
+  info.open(map);
+  return false;
+}
+
+// ✅ Pie‑chart cluster renderer
+const clusterRenderer = {
+  render: ({ count, markers }) => {
+
+    const statusCounts = {};
     markers.forEach(m => {
       const s = m.status || "Undecided";
-      counts[s] = (counts[s] || 0) + 1;
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
     });
 
-    let breakdown = "<strong>Cluster Breakdown</strong><br>";
-    for (const s in counts) {
-      breakdown += `${s}: ${counts[s]}<br>`;
-    }
+    const intentionColors = {
+      "Labour": "#e4003b",
+      "Tory": "#0087dc",
+      "Lib Dem": "#faa61a",
+      "Green": "#6ab023",
+      "Reform": "#00b3b3",
+      "Undecided": "#cccccc",
+      "Considering": "#999999",
+      "Against": "#000000",
+      "Knocked": "#9966cc"
+    };
 
-    const info = new google.maps.InfoWindow({
-      content: breakdown,
-      position: cluster.position
-    });
+    const total = markers.length;
+    let startAngle = 0;
+    const slices = [];
 
-    info.open(map);
-    return false;
-  },
+    for (const status in statusCounts) {
+      const value = statusCounts[status];
+      const angle = (value / total) * Math.PI * 2;
+      const endAngle = startAngle + angle;
 
-  renderer: {
-    render: ({ count, markers }) => {
+      const x1 = 50 + 50 * Math.cos(startAngle);
+      const y1 = 50 + 50 * Math.sin(startAngle);
+      const x2 = 50 + 50 * Math.cos(endAngle);
+      const y2 = 50 + 50 * Math.sin(endAngle);
 
-      const statusCounts = {};
-      markers.forEach(m => {
-        const s = m.status || "Undecided";
-        statusCounts[s] = (statusCounts[s] || 0) + 1;
-      });
+      const largeArc = angle > Math.PI ? 1 : 0;
 
-      const intentionColors = {
-        "Labour": "#e4003b",
-        "Tory": "#0087dc",
-        "Lib Dem": "#faa61a",
-        "Green": "#6ab023",
-        "Reform": "#00b3b3",
-        "Undecided": "#cccccc",
-        "Considering": "#999999",
-        "Against": "#000000",
-        "Knocked": "#9966cc"
-      };
-
-      const total = markers.length;
-      let startAngle = 0;
-      const slices = [];
-
-      for (const status in statusCounts) {
-        const value = statusCounts[status];
-        const angle = (value / total) * Math.PI * 2;
-        const endAngle = startAngle + angle;
-
-        const x1 = 50 + 50 * Math.cos(startAngle);
-        const y1 = 50 + 50 * Math.sin(startAngle);
-        const x2 = 50 + 50 * Math.cos(endAngle);
-        const y2 = 50 + 50 * Math.sin(endAngle);
-
-        const largeArc = angle > Math.PI ? 1 : 0;
-
-        const path = `
-          M 50 50
-          L ${x1} ${y1}
-          A 50 50 0 ${largeArc} 1 ${x2} ${y2}
-          Z
-        `;
-
-        slices.push(`
-          <path d="${path}"
-                fill="${intentionColors[status] || "#cccccc"}"
-                stroke="white"
-                stroke-width="1"/>
-        `);
-
-        startAngle = endAngle;
-      }
-
-      const svg = `
-        <svg width="60" height="60" viewBox="0 0 100 100">
-          ${slices.join("")}
-          <circle cx="50" cy="50" r="30" fill="white"/>
-          <text x="50" y="57"
-                text-anchor="middle"
-                font-size="28"
-                font-weight="bold"
-                fill="#333">
-            ${count}
-          </text>
-        </svg>
+      const path = `
+        M 50 50
+        L ${x1} ${y1}
+        A 50 50 0 ${largeArc} 1 ${x2} ${y2}
+        Z
       `;
 
-      const svgUrl = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+      slices.push(`
+        <path d="${path}"
+              fill="${intentionColors[status] || "#cccccc"}"
+              stroke="white"
+              stroke-width="1"/>
+      `);
 
-      // ✅ REQUIRED: full ClusterIconInfo object
-      return {
-        url: svgUrl,
-        width: 60,
-        height: 60,
-        anchorIcon: [30, 30],
-        anchorText: [30, 30],
-        textColor: "#333",
-        textSize: 14
-      };
+      startAngle = endAngle;
     }
-  }
-});
 
+    const svg = `
+      <svg width="60" height="60" viewBox="0 0 100 100">
+        ${slices.join("")}
+        <circle cx="50" cy="50" r="30" fill="white"/>
+        <text x="50" y="57"
+              text-anchor="middle"
+              font-size="28"
+              font-weight="bold"
+              fill="#333">
+          ${count}
+        </text>
+      </svg>
+    `;
+
+    const svgUrl = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+
+    return {
+      url: svgUrl,
+      width: 60,
+      height: 60,
+      anchorIcon: [30, 30],
+      anchorText: [30, 30],
+      textColor: "#333",
+      textSize: 14
+    };
+  }
+};
+
+// ✅ DOM event listeners
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("sheetFilter").addEventListener("change", fetchAndRenderMarkers);
 
@@ -572,20 +578,20 @@ document.addEventListener("DOMContentLoaded", () => {
           lng: position.coords.longitude
         };
 
-    new google.maps.Marker({
-  position: userLocation,
-  map,
-  title: "You are here",
-  status: "You",   // ✅ CRITICAL FIX
-  icon: {
-    path: google.maps.SymbolPath.CIRCLE,
-    fillColor: "#4285F4",
-    fillOpacity: 1,
-    strokeColor: "white",
-    strokeWeight: 2,
-    scale: 8
-  }
-});
+        new google.maps.Marker({
+          position: userLocation,
+          map,
+          title: "You are here",
+          status: "You",
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: "#4285F4",
+            fillOpacity: 1,
+            strokeColor: "white",
+            strokeWeight: 2,
+            scale: 8
+          }
+        });
 
         new google.maps.Circle({
           strokeColor: "#4285F4",
@@ -612,6 +618,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// ✅ Save modal
 function showModal() {
   const modal = document.getElementById("saveModal");
   modal.style.display = "flex";
@@ -620,52 +627,51 @@ function showModal() {
   }, 1000);
 }
 </script>
-  </head>
 
-  <body>
-    <div id="statusMessage"></div>
-    <div id="userInfo"></div>
-    <div id="map"></div>
+</head>
+<body>
+  <div id="statusMessage"></div>
+  <div id="userInfo"></div>
+  <div id="map"></div>
 
-    <div id="legend">
-      <strong>Legend</strong><br>
-      <span style="color:#e4003b">● Labour</span><br>
-      <span style="color:#0087dc">● Tory</span><br>
-      <span style="color:#faa61a">● Lib Dem</span><br>
-      <span style="color:#6ab023">● Green</span><br>
-      <span style="color:#00b3b3">● Reform</span><br>
-      <span style="color:#cccccc">● Undecided</span><br>
-      <span style="color:#999999">● Considering</span><br>
-      <span style="color:#000000">● Against</span><br>
-      <span style="color:#9966cc">● Knocked</span>
+  <div id="legend">
+    <strong>Legend</strong><br>
+    <span style="color:#e4003b">● Labour</span><br>
+    <span style="color:#0087dc">● Tory</span><br>
+    <span style="color:#faa61a">● Lib Dem</span><br>
+    <span style="color:#6ab023">● Green</span><br>
+    <span style="color:#00b3b3">● Reform</span><br>
+    <span style="color:#cccccc">● Undecided</span><br>
+    <span style="color:#999999">● Considering</span><br>
+    <span style="color:#000000">● Against</span><br>
+    <span style="color:#9966cc">● Knocked</span>
+  </div>
+
+  <div id="wardSelector">
+    <label for="sheetFilter"><strong>Filter by Ward</strong></label><br>
+    <select id="sheetFilter">
+      <option value="" selected disabled>Select a ward…</option>
+      <option value="All">All Wards</option>
+    </select>
+  </div>
+
+  <div id="saveModal">
+    <div class="modal-content">
+      <img src="https://upload.wikimedia.org/wikipedia/en/0/06/Logo_of_the_Reform_UK.svg" alt="Reform UK Logo">
+      <h3>Intelligence Logged</h3>
     </div>
+  </div>
 
-    <div id="wardSelector">
-      <label for="sheetFilter"><strong>Filter by Ward</strong></label><br>
-      <select id="sheetFilter">
-                <option value="" selected disabled>Select a ward…</option>
-        <option value="All">All Wards</option>
-      </select>
-    </div>
+  <div id="mobileToolbar">
+    <button id="filterBtn">Filter Ward</button>
+    <button id="locateBtn">📍 Locate Me</button>
+    <button id="logoutToolbarBtn">Logout</button>
+  </div>
 
-    <div id="saveModal">
-      <div class="modal-content">
-        <img src="https://upload.wikimedia.org/wikipedia/en/0/06/Logo_of_the_Reform_UK.svg" alt="Reform UK Logo">
-        <h3>Intelligence Logged</h3>
-      </div>
-    </div>
-
-    <div id="mobileToolbar">
-      <button id="filterBtn">Filter Ward</button>
-      <button id="locateBtn">📍 Locate Me</button>
-      <button id="logoutToolbarBtn">Logout</button>
-    </div>
-
-    <!-- ✅ Google Maps Loader -->
-    <script 
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB0hVyEg_1Rbi7IoqflyOslsv81KE3VSsY&callback=init&libraries=places&v=beta&use_legacy_marker=true"
-  async 
-  defer>
-</script>
-  </body>
+  <script 
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB0hVyEg_1Rbi7IoqflyOslsv81KE3VSsY&callback=init&libraries=places&v=beta&use_legacy_marker=true"
+    async 
+    defer>
+  </script>
+</body>
 </html>
