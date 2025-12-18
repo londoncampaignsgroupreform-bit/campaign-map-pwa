@@ -41,6 +41,30 @@
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
         line-height: 1.6;
       }
+      
+      /* ✅ Add this right below */
+#wardSummary {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 200px;
+  background: rgba(255,255,255,0.95);
+  padding: 12px;
+  border-radius: 8px;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  display: none;
+}
+
+#wardSummary strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 15px;
+}
+
 
       #userInfo {
         position: absolute;
@@ -200,8 +224,6 @@
       }
     </style>
 
-    <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
-
     <script>
 const API = "https://script.google.com/macros/s/AKfycbwmT_Xf9yP-5_VtUZ04c7eeQgjDgl-X4T51EJeCe0EM48dafZ16_WhE2ShGD5rEZ2wN/exec";
 
@@ -277,6 +299,32 @@ function initMap() {
     streetViewControl: true,
     mapTypeControl: true
   });
+
+function updateWardSummary(markers) {
+  const box = document.getElementById("wardSummary");
+
+  if (!markers || markers.length === 0) {
+    box.style.display = "none";
+    return;
+  }
+
+  const counts = {};
+  markers.forEach(m => {
+    const s = m.status || "Undecided";
+    counts[s] = (counts[s] || 0) + 1;
+  });
+
+  const total = markers.length;
+
+  let html = `<strong>Ward Breakdown</strong>`;
+  for (const status in counts) {
+    const pct = ((counts[status] / total) * 100).toFixed(1);
+    html += `<div>${status}: ${pct}%</div>`;
+  }
+
+  box.innerHTML = html;
+  box.style.display = "block";
+}
 
   fetchAndRenderMarkers();
 }
@@ -364,7 +412,7 @@ function renderMarkers(data) {
       });
 
       // ✅ Only push real canvassing markers into the clusterer
-  if (!marker.isUserMarker) {
+if (!marker.isUserMarker) {
   window._markersArray.push(marker);
 }
       bounds.extend(marker.getPosition());
@@ -435,6 +483,9 @@ function renderMarkers(data) {
 
   // ✅ Put markers directly on the map (no clustering)
 window._markersArray.forEach(m => m.setMap(map));
+
+// ✅ Update summary box with only the markers for this ward
+updateWardSummary(window._markersArray);
 
 // ✅ Ward zoom only (Option A)
 if (selectedSheet !== "All") {
@@ -625,7 +676,7 @@ function showModal() {
   <div id="statusMessage"></div>
   <div id="userInfo"></div>
   <div id="map"></div>
-
+  <div id="wardSummary"></div>
   <div id="legend">
     <strong>Legend</strong><br>
     <span style="color:#e4003b">● Labour</span><br>
