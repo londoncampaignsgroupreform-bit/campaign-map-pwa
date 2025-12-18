@@ -433,23 +433,15 @@ function renderMarkers(data) {
     });
   });
 
-  if (window._markerCluster) {
-    window._markerCluster.clearMarkers();
-  }
+  // ✅ Put markers directly on the map (no clustering)
+window._markersArray.forEach(m => m.setMap(map));
 
-  window._markerCluster = new markerClusterer.MarkerClusterer({
-    map,
-    markers: window._markersArray,
-    onClusterClick: clusterClickHandler,
-    renderer: clusterRenderer
-  });
-
-  // ✅ Ward zoom only (Option A)
-  if (selectedSheet !== "All") {
-    const center = wardCenters[selectedSheet] || defaultCenter;
-    map.setCenter(center);
-    map.setZoom(14.5);
-  }
+// ✅ Ward zoom only (Option A)
+if (selectedSheet !== "All") {
+  const center = wardCenters[selectedSheet] || defaultCenter;
+  map.setCenter(center);
+  map.setZoom(14.5);
+}
 }
 
 function clusterClickHandler(cluster) {
