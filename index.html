@@ -445,6 +445,20 @@ function renderMarkers(data) {
     window._markerCluster.clearMarkers();
 }
 
+console.log("Markers being clustered:", window._markersArray);
+
+window._markersArray.forEach((m, i) => {
+  if (!m || typeof m !== "object") {
+    console.error("❌ Marker is not an object:", i, m);
+  } else if (!(m instanceof google.maps.Marker)) {
+    console.error("❌ Not a google.maps.Marker:", i, m);
+  } else if (!m.getPosition) {
+    console.error("❌ Marker missing getPosition:", i, m);
+  } else {
+    console.log("✅ Valid marker:", i, m.getPosition().toString());
+  }
+});  
+  
 window._markerCluster = new markerClusterer.MarkerClusterer({
     map,
     markers: window._markersArray,
