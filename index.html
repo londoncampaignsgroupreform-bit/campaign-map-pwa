@@ -573,18 +573,19 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         new google.maps.Marker({
-          position: userLocation,
-          map,
-          title: "You are here",
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            fillColor: "#4285F4",
-            fillOpacity: 1,
-            strokeColor: "white",
-            strokeWeight: 2,
-            scale: 8
-          }
-        });
+  position: userLocation,
+  map,
+  title: "You are here",
+  status: "You",   // ✅ CRITICAL FIX
+  icon: {
+    path: google.maps.SymbolPath.CIRCLE,
+    fillColor: "#4285F4",
+    fillOpacity: 1,
+    strokeColor: "white",
+    strokeWeight: 2,
+    scale: 8
+  }
+});
 
         new google.maps.Circle({
           strokeColor: "#4285F4",
