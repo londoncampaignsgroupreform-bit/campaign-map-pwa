@@ -436,16 +436,23 @@ function renderMarkers(data) {
   }
 
   window._markerCluster = new markerClusterer.MarkerClusterer({
-    map,
-    markers: window._markersArray,
-    onClusterClick: clusterClickHandler,
-    renderer: clusterRenderer
-  });
+  map,
+  markers: window._markersArray,
+  onClusterClick: clusterClickHandler,
+  renderer: clusterRenderer
+});
 
-  google.maps.event.addListenerOnce(map, "idle", () => {
-    map.fitBounds(bounds);
-  });
+// ✅ ADD THIS
+if (selectedSheet !== "All") {
+  const center = wardCenters[selectedSheet] || defaultCenter;
+  map.setCenter(center);
+  map.setZoom(14.5);
 }
+
+// ✅ Delay fitBounds until AFTER clusterer is ready
+google.maps.event.addListenerOnce(map, "idle", () => {
+  map.fitBounds(bounds);
+});
 
 function clusterClickHandler(cluster) {
   const markers = cluster.markers;
